@@ -1,1 +1,3 @@
-# opencsd csd aware distributed filesystem for Cloud DBMS workload
+# opencsd / csd-filesystem
+
+CSD Storage aware distributed filesystem for Cloud DBMS workload
