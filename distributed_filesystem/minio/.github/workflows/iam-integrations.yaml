@@ -1,0 +1,95 @@
+name: IAM integration
+
+on:
+  pull_request:
+    branches:
+    - master
+
+# This ensures that previous jobs for the PR are canceled when the PR is
+# updated.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref }}
+  cancel-in-progress: true
+
+jobs:
+  iam-matrix-test:
+    name: "[Go=${{ matrix.go-version }}|ldap=${{ matrix.ldap }}|etcd=${{ matrix.etcd }}|openid=${{ matrix.openid }}]"
+    runs-on: ubuntu-latest
+
+    services:
+      openldap:
+        image: quay.io/minio/openldap
+        ports:
+          - "389:389"
+          - "636:636"
+        env:
+          LDAP_ORGANIZATION: "MinIO Inc"
+          LDAP_DOMAIN: "min.io"
+          LDAP_ADMIN_PASSWORD: "admin"
+      etcd:
+        image: "quay.io/coreos/etcd:v3.5.1"
+        env:
+          ETCD_LISTEN_CLIENT_URLS: "http://0.0.0.0:2379"
+          ETCD_ADVERTISE_CLIENT_URLS: "http://0.0.0.0:2379"
+        ports:
+          - "2379:2379"
+        options: >-
+          --health-cmd "etcdctl endpoint health"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      openid:
+        image: quay.io/minio/dex
+        ports:
+          - "5556:5556"
+        env:
+          DEX_LDAP_SERVER: "openldap:389"
+
+    strategy:
+      # When ldap, etcd or openid vars are empty below, those external servers
+      # are turned off - i.e. if ldap="", then ldap server is not enabled for
+      # the tests.
+      matrix:
+        go-version: [1.17.x]
+        ldap: ["", "localhost:389"]
+        etcd: ["", "http://localhost:2379"]
+        openid: ["", "http://127.0.0.1:5556/dex"]
+        exclude:
+          # exclude combos where all are empty.
+          - ldap: ""
+            etcd: ""
+            openid: ""
+          # exclude combos where both ldap and openid IDPs are specified.
+          - ldap: "localhost:389"
+            openid: "http://127.0.0.1:5556/dex"
+
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-go@v2
+        with:
+          go-version: ${{ matrix.go-version }}
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-${{ matrix.go-version }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ matrix.go-version }}-go-
+      - name: Test LDAP/OpenID/Etcd combo
+        env:
+          LDAP_TEST_SERVER: ${{ matrix.ldap }}
+          ETCD_SERVER: ${{ matrix.etcd }}
+          OPENID_TEST_SERVER: ${{ matrix.openid }}
+        run: |
+          sudo sysctl net.ipv6.conf.all.disable_ipv6=0
+          sudo sysctl net.ipv6.conf.default.disable_ipv6=0
+          make test-iam
+      - name: Test LDAP for automatic site replication
+        if: matrix.ldap == 'localhost:389'
+        run: |
+          make test-site-replication-ldap
+      - name: Test OIDC for automatic site replication
+        if: matrix.openid == 'http://127.0.0.1:5556/dex'
+        run: |
+          make test-site-replication-oidc
