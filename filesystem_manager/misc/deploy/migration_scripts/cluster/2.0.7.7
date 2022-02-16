@@ -1,0 +1,17 @@
+#!/bin/sh
+
+[ -f /var/lib/gms/functions ] && . /var/lib/gms/functions
+
+log "INFO" "[CLUSTER] migration for 2.0.7.7"
+
+# GSM table migrating for events/tasks
+log "INFO" "[CLUSTER] reloading cluster volume information ..."
+
+. /etc/default/gluesys
+
+mysql -u root -pgluesys\!\! -e "
+    USE gsm;
+    ALTER TABLE \`events\` ADD \`task_id\` INT(11) NULL FIRST;
+"
+
+log "INFO" "[CLUSTER] Migration is done"

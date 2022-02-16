@@ -1,0 +1,23 @@
+post:
+  x-mojo-to: 'Login#sign_in'
+  operationId: sign_in
+  requestBody:
+    required: true
+    description: 'sign in'
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            ID:
+              type: string
+            Password:
+              type: string
+          required:
+            - ID
+            - Password
+  responses:
+    200:
+      $ref: '#/components/responses/SignedIn'
+    401:
+      $ref: '#/components/responses/Unauthorized'

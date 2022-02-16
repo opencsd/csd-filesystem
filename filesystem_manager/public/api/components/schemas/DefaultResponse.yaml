@@ -1,0 +1,27 @@
+description: Default response schema
+type: object
+properties:
+  success:
+    type: boolean
+  return:
+    type: string
+  msg:
+    type: string
+  # Should define entity in each responses
+  #entity:
+  #  type: object
+  statuses:
+    type: array
+    items:
+      $ref: '#/components/schemas/Status'
+  stage_info:
+    $ref: '#/components/schemas/Stage'
+  count:
+    type: integer
+    nullable: true
+  total:
+    type: integer
+    nullable: true
+required:
+  - success
+  - msg

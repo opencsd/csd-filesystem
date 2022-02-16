@@ -1,0 +1,22 @@
+post:
+  x-mojo-to: 'Auth::ADS#info'
+  operationId: auth_ads_info
+  tags:
+    - auth
+  responses:
+    200:
+      description: response
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/responses/ADSConfig'
+              - type: object
+                properties:
+                  entity:
+                    type: object
+                    properties:
+                      Enabled:
+                        type: boolean
+    401:
+      $ref: '#/components/responses/Unauthorized'

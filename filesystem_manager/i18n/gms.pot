@@ -1,0 +1,3020 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR Gluesys
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: Ji-Hyeon Gim <potatogim@gluesys.com>\n"
+"POT-Creation-Date: 2014-12-13 21:35+0900\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=CHARSET\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=INTEGER; plural=EXPRESSION;\n"
+
+#: ../lib/GMS/Controller/Cluster/Main.pm:162
+#: ../lib/GMS/Controller/Cluster/Main.pm:170
+#: ../lib/GMS/Controller/Cluster/Main.pm:177
+#: ../lib/GMS/Controller/Cluster/Main.pm:184
+#: ../lib/GMS/Controller/Cluster/Main.pm:191
+#: ../lib/GMS/Controller/Cluster/Main.pm:199
+#: ../lib/GMS/Controller/Cluster/Main.pm:206
+#: ../lib/GMS/Controller/Cluster/Main.pm:213
+#: ../lib/GMS/Controller/Cluster/Main.pm:220
+#: ../lib/GMS/Controller/Cluster/Main.pm:227
+msgid "Cluster Management"
+msgstr ""
+
+#: ../lib/GMS/Controller/Cluster/Main.pm:164
+#: ../lib/GMS/Controller/Cluster/Main.pm:169
+msgid "Overview"
+msgstr ""
+
+#: ../lib/GMS/Controller/Cluster/Main.pm:176
+msgid "Event"
+msgstr ""
+
+#: ../lib/GMS/Controller/Cluster/Main.pm:183
+msgid "Node Management"
+msgstr ""
+
+#: ../lib/GMS/Controller/Cluster/Main.pm:190
+msgid "Network"
+msgstr ""
+
+#: ../lib/GMS/Controller/Cluster/Main.pm:198
+msgid "Notification"
+msgstr ""
+
+#: ../lib/GMS/Controller/Cluster/Main.pm:205
+msgid "Time"
+msgstr ""
+
+#: ../lib/GMS/Controller/Cluster/Main.pm:212
+msgid "License"
+msgstr ""
+
+#: ../lib/GMS/Controller/Cluster/Main.pm:219
+msgid "Log"
+msgstr ""
+
+#: ../lib/GMS/Controller/Cluster/Main.pm:226
+msgid "Power"
+msgstr ""
+
+#: ../lib/GMS/Controller/Cluster/Main.pm:235
+#: ../lib/GMS/Controller/Cluster/Main.pm:243
+#: ../lib/GMS/Controller/Cluster/Main.pm:250
+#: ../lib/GMS/Controller/Cluster/Main.pm:257
+msgid "Volume Management"
+msgstr ""
+
+#: ../lib/GMS/Controller/Cluster/Main.pm:237
+#: ../lib/GMS/Controller/Cluster/Main.pm:242
+msgid "Volume Pool"
+msgstr ""
+
+#: ../lib/GMS/Controller/Cluster/Main.pm:249
+msgid "Volume"
+msgstr ""
+
+#: ../lib/GMS/Controller/Cluster/Main.pm:256
+msgid "Snapshot"
+msgstr ""
+
+#: ../lib/GMS/Controller/Cluster/Main.pm:265
+#: ../lib/GMS/Controller/Cluster/Main.pm:273
+#: ../lib/GMS/Controller/Cluster/Main.pm:280
+#: ../lib/GMS/Controller/Cluster/Main.pm:287
+#: ../lib/GMS/Controller/Cluster/Main.pm:294
+msgid "Account"
+msgstr ""
+
+#: ../lib/GMS/Controller/Cluster/Main.pm:265
+#: ../lib/GMS/Controller/Cluster/Main.pm:273
+#: ../lib/GMS/Controller/Cluster/Main.pm:280
+#: ../lib/GMS/Controller/Cluster/Main.pm:286
+#: ../lib/GMS/Controller/Cluster/Main.pm:287
+#: ../lib/GMS/Controller/Cluster/Main.pm:294
+msgid "Authentication"
+msgstr ""
+
+#: ../lib/GMS/Controller/Cluster/Main.pm:272
+msgid "User"
+msgstr ""
+
+#: ../lib/GMS/Controller/Cluster/Main.pm:279
+msgid "Group"
+msgstr ""
+
+#: ../lib/GMS/Controller/Cluster/Main.pm:293
+msgid "Adminitrator"
+msgstr ""
+
+#: ../lib/GMS/Controller/Cluster/Main.pm:302
+#: ../lib/GMS/Controller/Cluster/Main.pm:310
+#: ../lib/GMS/Controller/Cluster/Main.pm:317
+#: ../lib/GMS/Controller/Cluster/Main.pm:324
+#: ../lib/GMS/Controller/Cluster/Main.pm:331
+msgid "Share Management"
+msgstr ""
+
+#: ../lib/GMS/Controller/Cluster/Main.pm:309
+msgid "SMB"
+msgstr ""
+
+#: ../lib/GMS/Controller/Cluster/Main.pm:316
+msgid "NFS"
+msgstr ""
+
+#: ../lib/GMS/Controller/Cluster/Main.pm:323
+msgid "FTP"
+msgstr ""
+
+#: ../lib/GMS/Controller/Cluster/Main.pm:330
+msgid "Share"
+msgstr ""
+
+#: ../libgms/API/Return.pm:49
+#, perl-brace-format
+msgid "Invalid account controller: {type}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:51
+#, perl-brace-format
+msgid "Failed to connect to account controller: {type}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:53
+#, perl-brace-format
+msgid "Failed to initialize account controller: {type}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:55
+#, perl-brace-format
+msgid "Failed to disconnect account controller: {type}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:58
+#, perl-brace-format
+msgid "User not found: {user}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:59
+#, perl-brace-format
+msgid "User already exists: {user}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:60
+#, perl-brace-format
+msgid "Failed to create user: {user}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:61
+#, perl-brace-format
+msgid "Failed to create user home: {user}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:62
+#, perl-brace-format
+msgid "Password must be at least {len}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:64
+#, perl-brace-format
+msgid "Password is invalid (minlen: {minlen}, minclass: {minclass})"
+msgstr ""
+
+#: ../libgms/API/Return.pm:65
+#, perl-brace-format
+msgid "Failed to update password info: {user}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:66
+#, perl-brace-format
+msgid "Failed to set samba account: {user}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:67
+#, perl-brace-format
+msgid "Failed to update samba account: {user}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:68
+#, perl-brace-format
+msgid "Failed to delete samba account: {user}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:70
+#, perl-brace-format
+msgid "Failed to join a user to the group: {user}/{group}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:72
+#, perl-brace-format
+msgid "Failed to leave a user from the group: {user}/{group}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:73
+#, perl-brace-format
+msgid "User is retrieved: {user}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:74
+#, perl-brace-format
+msgid "User is created: {user}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:75
+msgid "Failed to count users"
+msgstr ""
+
+#: ../libgms/API/Return.pm:76
+#, perl-brace-format
+msgid "The number of users exists: {count}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:77
+msgid "Failed to list users"
+msgstr ""
+
+#: ../libgms/API/Return.pm:78
+#, perl-brace-format
+msgid "The number of users listed: {count}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:79
+#, perl-brace-format
+msgid "Failed to update user: {user}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:80
+#, perl-brace-format
+msgid "User is updated: {user}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:82
+#, perl-brace-format
+msgid "User is deleted: {user}"
+msgid_plural "Users are deleted: {user}"
+msgstr[0] ""
+msgstr[1] ""
+
+#: ../libgms/API/Return.pm:86
+#, perl-brace-format
+msgid "Failed to delete user: {user}"
+msgid_plural "Failed to delete users: {user}"
+msgstr[0] ""
+msgstr[1] ""
+
+#: ../libgms/API/Return.pm:91
+msgid "All users are reloaded"
+msgstr ""
+
+#: ../libgms/API/Return.pm:92
+msgid "Failed to reload users"
+msgstr ""
+
+#: ../libgms/API/Return.pm:95
+#, perl-brace-format
+msgid "Failed to find group: {group}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:96
+#, perl-brace-format
+msgid "Group already exists: {group}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:97
+msgid "Failed to count groups"
+msgstr ""
+
+#: ../libgms/API/Return.pm:98
+#, perl-brace-format
+msgid "The number of usres exists: {count}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:99
+msgid "Failed to list groups"
+msgstr ""
+
+#: ../libgms/API/Return.pm:100
+#, perl-brace-format
+msgid "The number of groups listed: {count}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:101
+#, perl-brace-format
+msgid "Group is retrieved: {group}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:102
+#, perl-brace-format
+msgid "Group is created: {group}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:103
+#, perl-brace-format
+msgid "Failed to create group: {group}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:104
+#, perl-brace-format
+msgid "Group is updated: {group}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:105
+#, perl-brace-format
+msgid "Failed to update group: {group}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:108
+#, perl-brace-format
+msgid "Group is deleted: {group}"
+msgid_plural "Groups are deleted: {group}"
+msgstr[0] ""
+msgstr[1] ""
+
+#: ../libgms/API/Return.pm:115
+#, perl-brace-format
+msgid "Failed to delete group: {group}"
+msgid_plural "Failed to delete groups: {group}"
+msgstr[0] ""
+msgstr[1] ""
+
+#: ../libgms/API/Return.pm:120
+msgid "All groups are reloaded"
+msgstr ""
+
+#: ../libgms/API/Return.pm:121
+msgid "Failed to reload groups"
+msgstr ""
+
+#: ../libgms/API/Return.pm:126
+#, perl-brace-format
+msgid "authentication has configured: {feature}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:127
+#, perl-brace-format
+msgid "authentication config has retrieved: {feature}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:129
+#, perl-brace-format
+msgid "Joined to authentication service: {feature}({server})"
+msgstr ""
+
+#: ../libgms/API/Return.pm:130
+#, perl-brace-format
+msgid "Leaved from authentication service: {feature}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:131
+#, perl-brace-format
+msgid "authentication has reloaded: {feature}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:134
+#, perl-brace-format
+msgid "Failed to configure authentication service: {feature}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:136
+#, perl-brace-format
+msgid "Failed to get authentication config: {feature}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:138
+#, perl-brace-format
+msgid "Failed to join authentication service: {feature}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:140
+#, perl-brace-format
+msgid "Failed to leave authentication service: {feature}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:142
+#, perl-brace-format
+msgid "Failed to reload authentication config: {feature}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:147
+msgid "Failed to read block device from library"
+msgstr ""
+
+#: ../libgms/API/Return.pm:149
+#, perl-brace-format
+msgid "There are no target block device: {devname}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:150
+msgid "Block device list is retrieved"
+msgstr ""
+
+#: ../libgms/API/Return.pm:152
+#, perl-brace-format
+msgid "The block device info is retrieved: {devname}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:154
+#, perl-brace-format
+msgid "This block device is currently in use: {devname}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:156
+#, perl-brace-format
+msgid "This block device does not exists: {devname}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:161
+msgid "Validation error"
+msgstr ""
+
+#: ../libgms/API/Return.pm:162
+#, perl-brace-format
+msgid "Invalid parameter value: {name}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:164
+#, perl-brace-format
+msgid "Exclusive parameters passed together: {name} v.s. {other}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:166
+#, perl-brace-format
+msgid "Selective parameters not passed: {name} or {others}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:167
+#, perl-brace-format
+msgid "Missing parameter: {name}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:168
+#, perl-brace-format
+msgid "Unknown parameter: {name}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:169
+#, perl-brace-format
+msgid "Required entity is missing: {entity}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:170
+#, perl-brace-format
+msgid "Required entity is invalid: {entity}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:171
+#, perl-brace-format
+msgid "{resource} not found: {name}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:172
+#, perl-brace-format
+msgid "{resource} already exists: {name}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:173
+#, perl-brace-format
+msgid "{resource} list is retrieved"
+msgstr ""
+
+#: ../libgms/API/Return.pm:174
+#, perl-brace-format
+msgid "{resource} is created successfully: {name}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:175
+#, perl-brace-format
+msgid "{resource} is updated successfully: {name}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:176
+#, perl-brace-format
+msgid "{resource} is deleted successfully: {name}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:177
+#, perl-brace-format
+msgid "Failed to create {resource}: {name}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:178
+#, perl-brace-format
+msgid "Failed to update {resource}: {name}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:179
+#, perl-brace-format
+msgid "Failed to delete {resource}: {name}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:180
+#, perl-brace-format
+msgid "Not supported feature: {feature}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:181
+#, perl-brace-format
+msgid "Unexpected error: {details}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:182
+msgid "GMS not running"
+msgstr ""
+
+#: ../libgms/API/Return.pm:183
+msgid "GMS is reloaded successfully"
+msgstr ""
+
+#: ../libgms/API/Return.pm:184
+msgid "Failed to reload GMS"
+msgstr ""
+
+#: ../libgms/API/Return.pm:185
+msgid "Girasole is reloaded successfully"
+msgstr ""
+
+#: ../libgms/API/Return.pm:186
+msgid "Failed to reload Girasole"
+msgstr ""
+
+#: ../libgms/API/Return.pm:187
+#, perl-brace-format
+msgid "You are not authorized: {id}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:188
+#, perl-brace-format
+msgid "User has signed in: {id}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:189
+#, perl-brace-format
+msgid "User has signed out: {id}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:190
+msgid "Your secure-key is invalid"
+msgstr ""
+
+#: ../libgms/API/Return.pm:192
+#, perl-brace-format
+msgid "Password does not match the confirm password: {id}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:193
+msgid "Failed to update session"
+msgstr ""
+
+#: ../libgms/API/Return.pm:194
+msgid "Could not access internal database"
+msgstr ""
+
+#: ../libgms/API/Return.pm:195
+msgid "dummy API requested for test"
+msgstr ""
+
+#: ../libgms/API/Return.pm:196
+msgid "Cluster dummy API requested for test"
+msgstr ""
+
+#: ../libgms/API/Return.pm:197
+msgid "GMS OK"
+msgstr ""
+
+#: ../libgms/API/Return.pm:202
+msgid "Event validation has performed successfully"
+msgstr ""
+
+#: ../libgms/API/Return.pm:203
+msgid "Failed to validate events"
+msgstr ""
+
+#: ../libgms/API/Return.pm:208
+#, perl-brace-format
+msgid "List of files in {dir} list is retrieved"
+msgstr ""
+
+#: ../libgms/API/Return.pm:210
+#, perl-brace-format
+msgid "The information of {dir} is retrieved"
+msgstr ""
+
+#: ../libgms/API/Return.pm:212
+#, perl-brace-format
+msgid "Target directory is created: {dir} ({perm})"
+msgstr ""
+
+#: ../libgms/API/Return.pm:214
+#, perl-brace-format
+msgid "Permission is modified successfully: {path} ({perm})"
+msgstr ""
+
+#: ../libgms/API/Return.pm:216
+#, perl-brace-format
+msgid "Onwer is modified successfully: {path} ({user}{group})"
+msgstr ""
+
+#: ../libgms/API/Return.pm:218
+#, perl-brace-format
+msgid "Directory is checked: {path} (dir = {is_dir}, exist = {is_exist})"
+msgstr ""
+
+#: ../libgms/API/Return.pm:222
+msgid "Failed to retrieved file list"
+msgstr ""
+
+#: ../libgms/API/Return.pm:224
+msgid "Failed to retrieved directory information"
+msgstr ""
+
+#: ../libgms/API/Return.pm:226
+msgid "Failed to create directory"
+msgstr ""
+
+#: ../libgms/API/Return.pm:228
+msgid "Failed to change permission"
+msgstr ""
+
+#: ../libgms/API/Return.pm:229
+msgid "Failed to change owner"
+msgstr ""
+
+#: ../libgms/API/Return.pm:231
+#, perl-brace-format
+msgid "Failed to check directory: {path}(dir = {is_dir}, exist = {is_exist})"
+msgstr ""
+
+#: ../libgms/API/Return.pm:235
+#, perl-brace-format
+msgid ""
+"Directory is not readable: {dir}(user:{user}, group:{group}, perm:{perm})"
+msgstr ""
+
+#: ../libgms/API/Return.pm:238
+#, perl-brace-format
+msgid ""
+"Directory is not writable: {dir}(user:{user}, group:{group}, perm:{perm})"
+msgstr ""
+
+#: ../libgms/API/Return.pm:241
+#, perl-brace-format
+msgid "ACLs has retrieved successfully: {path}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:242
+#, perl-brace-format
+msgid "ACL has been set successfully: {path}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:244
+#, perl-brace-format
+msgid "ACL has been unset successfully: {path}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:245
+#, perl-brace-format
+msgid "Failed to set ACL: {path}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:246
+#, perl-brace-format
+msgid "Failed to get ACL: {path}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:247
+#, perl-brace-format
+msgid "Failed to unset ACL: {path}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:250
+#, perl-brace-format
+msgid "List of files in {dir} list is retrieved in all nodes"
+msgstr ""
+
+#: ../libgms/API/Return.pm:252
+#, perl-brace-format
+msgid "The information of {dir} is retrieved in all nodes"
+msgstr ""
+
+#: ../libgms/API/Return.pm:254
+#, perl-brace-format
+msgid "Target directory is created: {dir} ({perm}) in all nodes"
+msgstr ""
+
+#: ../libgms/API/Return.pm:256
+#, perl-brace-format
+msgid "Permission is modified successfully: {path} ({perm}) in all nodes"
+msgstr ""
+
+#: ../libgms/API/Return.pm:259
+#, perl-brace-format
+msgid "Onwer is modified successfully: {path} ({user}{group}) in all nodes"
+msgstr ""
+
+#: ../libgms/API/Return.pm:262
+#, perl-brace-format
+msgid ""
+"Directory is checked: {path} (dir = {is_dir}, exist = {is_exist}) in all "
+"nodes"
+msgstr ""
+
+#: ../libgms/API/Return.pm:266
+msgid "Failed to retrieved file list in some nodes"
+msgstr ""
+
+#: ../libgms/API/Return.pm:268
+msgid "Failed to retrieved directory information in some nodes"
+msgstr ""
+
+#: ../libgms/API/Return.pm:270
+msgid "Failed to create directory in some nodes"
+msgstr ""
+
+#: ../libgms/API/Return.pm:272
+msgid "Failed to change permission in some nodes"
+msgstr ""
+
+#: ../libgms/API/Return.pm:274
+msgid "Failed to change owner in some nodes"
+msgstr ""
+
+#: ../libgms/API/Return.pm:276
+#, perl-brace-format
+msgid ""
+"Failed to check directory: {path}(dir = {is_dir}, exist = {is_exist}) in "
+"some nodes"
+msgstr ""
+
+#: ../libgms/API/Return.pm:281 ../libgms/API/Return.pm:1001
+msgid "Getting event list has succeeded"
+msgstr ""
+
+#: ../libgms/API/Return.pm:282 ../libgms/API/Return.pm:1004
+msgid "Getting the number of events has succeeded"
+msgstr ""
+
+#: ../libgms/API/Return.pm:283 ../libgms/API/Return.pm:1007
+msgid "Deleting events has succeeded"
+msgstr ""
+
+#: ../libgms/API/Return.pm:284 ../libgms/API/Return.pm:1258
+msgid "Failed to get the event list"
+msgstr ""
+
+#: ../libgms/API/Return.pm:285 ../libgms/API/Return.pm:1260
+msgid "Failed to get the number of events"
+msgstr ""
+
+#: ../libgms/API/Return.pm:286 ../libgms/API/Return.pm:1262
+msgid "Failed to delete events"
+msgstr ""
+
+#: ../libgms/API/Return.pm:291
+#, perl-brace-format
+msgid "Device is formatted: {device}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:292
+#, perl-brace-format
+msgid "Device is mounted: {device}: {path}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:293
+#, perl-brace-format
+msgid "Device is unmounted: {device}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:294
+#, perl-brace-format
+msgid "Device is extended: {device}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:296
+#, perl-brace-format
+msgid "Failed to format device: {device}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:297
+#, perl-brace-format
+msgid "Failed to mount device: {device}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:298
+#, perl-brace-format
+msgid "Failed to unmount device: {device}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:299
+msgid "Cannot unmount device in system VG"
+msgstr ""
+
+#: ../libgms/API/Return.pm:300
+#, perl-brace-format
+msgid "Device is already mounted: {device}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:301
+#, perl-brace-format
+msgid "Device is not mounted: {device}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:302
+#, perl-brace-format
+msgid "Failed to extend device: {device}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:303
+#, perl-brace-format
+msgid "Failed to get a mount status: {path}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:304
+#, perl-brace-format
+msgid "Device is unmountable: {device}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:305
+#, perl-brace-format
+msgid "Device cannot be unmounted: {device}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:309
+#, perl-brace-format
+msgid "Quota has set to '{path}' for '{target}'"
+msgstr ""
+
+#: ../libgms/API/Return.pm:311
+#, perl-brace-format
+msgid "Failed to set quota to '{path}' for '{target}'"
+msgstr ""
+
+#: ../libgms/API/Return.pm:313
+#, perl-brace-format
+msgid "Quota has unset from '{path}' for '{target}'"
+msgstr ""
+
+#: ../libgms/API/Return.pm:315
+#, perl-brace-format
+msgid "Failed to unset quota from '{path}' for '{target}'"
+msgstr ""
+
+#: ../libgms/API/Return.pm:317
+#, perl-brace-format
+msgid "Update the quota to '{path}' for '{target}'"
+msgstr ""
+
+#: ../libgms/API/Return.pm:319
+#, perl-brace-format
+msgid "Failed to update the quota to '{path}' for '{target}'"
+msgstr ""
+
+#: ../libgms/API/Return.pm:320
+#, perl-brace-format
+msgid "Quota project is created: {project}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:322
+#, perl-brace-format
+msgid "Failed to add quota project: {project}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:323
+#, perl-brace-format
+msgid "Quota project is deleted: {project}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:325
+#, perl-brace-format
+msgid "Failed to delete quota project: {project}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:330
+#, perl-brace-format
+msgid "Manager information is retrieved: {manager}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:332
+#, perl-brace-format
+msgid "Manager information is updated: {manager}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:334
+#, perl-brace-format
+msgid "User is not delegated as a manager: {user}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:336
+#, perl-brace-format
+msgid "User is already delegated as a manager: {user}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:337
+#, perl-brace-format
+msgid "User is delegated as a manager: {user}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:338
+#, perl-brace-format
+msgid "User is dismissed: {user}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:361
+#, perl-brace-format
+msgid "A Network using same name already exists: {same_network}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:362
+#, perl-brace-format
+msgid "missed parameter: {param}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:363
+msgid "some invalid parameters"
+msgstr ""
+
+#: ../libgms/API/Return.pm:365
+msgid "DNS config is retrieved"
+msgstr ""
+
+#: ../libgms/API/Return.pm:366
+#, perl-brace-format
+msgid "DNS config is updated: {dns}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:367
+msgid "DNS config is reloaded"
+msgstr ""
+
+#: ../libgms/API/Return.pm:369
+msgid "Failed to read DNS config"
+msgstr ""
+
+#: ../libgms/API/Return.pm:371
+#, perl-brace-format
+msgid "Failed to update DNS config: {dns}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:372
+msgid "Failed to reload DNS config"
+msgstr ""
+
+#: ../libgms/API/Return.pm:374
+#, perl-brace-format
+msgid "Hostname is retrieved: {hostname}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:376
+#, perl-brace-format
+msgid "Hostname is updated: {from} -> {to}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:378
+#, perl-brace-format
+msgid "Failed to update hostname: {from} -> {to}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:380
+msgid "Network hosts retrieved"
+msgstr ""
+
+#: ../libgms/API/Return.pm:381
+#, perl-brace-format
+msgid "Network hosts added: {ip}: {hostnames}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:383
+#, perl-brace-format
+msgid "Network hosts updated: {ip}: {hostnames}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:385
+#, perl-brace-format
+msgid "Network hosts removed: {ip}: {hostnames}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:386
+msgid "Network hosts has reloaded"
+msgstr ""
+
+#: ../libgms/API/Return.pm:388
+msgid "Cluster host config is retrieved"
+msgstr ""
+
+#: ../libgms/API/Return.pm:390
+msgid "Cluster host config is reloaded"
+msgstr ""
+
+#: ../libgms/API/Return.pm:392
+#, perl-brace-format
+msgid "Cluster host is added: {tgt_hostname}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:394
+#, perl-brace-format
+msgid "Cluster host is removed: : {tgt_hostname}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:396
+#, perl-brace-format
+msgid "All cluster hosts are removed: {success_host_list}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:398
+msgid "Failed to reload cluster host"
+msgstr ""
+
+#: ../libgms/API/Return.pm:400
+#, perl-brace-format
+msgid "Failed to add cluster host: {tgt_hostname}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:402
+#, perl-brace-format
+msgid "Failed to remove cluster host: {tgt_hostname}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:404
+#, perl-brace-format
+msgid "Failed to remove cluster hosts: {failed_host_list}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:406
+#, perl-brace-format
+msgid ""
+"Failed to remove some cluster hosts: (success: {success_host_list}, fail: "
+"{failed_host_list})"
+msgstr ""
+
+#: ../libgms/API/Return.pm:409
+msgid "Network device list is retrieved"
+msgstr ""
+
+#: ../libgms/API/Return.pm:410
+msgid "Network device is retrieved"
+msgstr ""
+
+#: ../libgms/API/Return.pm:411
+#, perl-brace-format
+msgid "Network device is updated: {name}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:413
+#, perl-brace-format
+msgid "Failed to update network device: {name}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:415
+msgid "Bonding interface list is retrieved"
+msgstr ""
+
+#: ../libgms/API/Return.pm:417
+#, perl-brace-format
+msgid "Bonding interface is retrieved: {name}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:419
+#, perl-brace-format
+msgid "Bonding interface is created: {name}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:421
+#, perl-brace-format
+msgid "Bonding interface is updated: {name}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:423
+#, perl-brace-format
+msgid "Bonding interface is deleted: {name}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:425
+#, perl-brace-format
+msgid "Failed to create bonding interface: {name}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:427
+#, perl-brace-format
+msgid "Failed to update bonding interface: {name}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:429
+#, perl-brace-format
+msgid "Failed to delete bonding interface: {name}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:431
+msgid "VLAN interface list is retrieved"
+msgstr ""
+
+#: ../libgms/API/Return.pm:432
+#, perl-brace-format
+msgid "VLAN interface is retrieved: {name}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:433
+#, perl-brace-format
+msgid "VLAN interface is created: {name}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:434
+#, perl-brace-format
+msgid "VLAN interface is updated: {name}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:435
+#, perl-brace-format
+msgid "VLAN interface is deleted: {name}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:437
+#, perl-brace-format
+msgid "Failed to create VLAN interface: {name}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:439
+#, perl-brace-format
+msgid "Failed to update VLAN interface: {name}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:441
+#, perl-brace-format
+msgid "Failed to delete VLAN interface: {name}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:443
+msgid "Network addresses list is retrieved"
+msgstr ""
+
+#: ../libgms/API/Return.pm:444
+#, perl-brace-format
+msgid "Network address is added: {addr}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:445
+#, perl-brace-format
+msgid "Network address is removed: {addr}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:446
+#, perl-brace-format
+msgid "Network address is updated: {addr}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:448
+#, perl-brace-format
+msgid "Failed to update address: {addr}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:451
+msgid "Network routing table list is retrieved"
+msgstr ""
+
+#: ../libgms/API/Return.pm:453
+#, perl-brace-format
+msgid "Network routing table is retrieved: {name}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:455
+#, perl-brace-format
+msgid "Network routing table is created: {name}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:457
+#, perl-brace-format
+msgid "Network routing table is deleted: {name}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:459
+msgid "Network routing rule list is retrieved"
+msgstr ""
+
+#: ../libgms/API/Return.pm:461
+#, perl-brace-format
+msgid "Network routing rule is created: {table} ({rule})"
+msgstr ""
+
+#: ../libgms/API/Return.pm:463
+#, perl-brace-format
+msgid "Network routing rule is updated: {table} ({rule})"
+msgstr ""
+
+#: ../libgms/API/Return.pm:465
+#, perl-brace-format
+msgid "Network routing rule is deleted: {table} ({rule})"
+msgstr ""
+
+#: ../libgms/API/Return.pm:467
+msgid "Network routing entry list is retrieved"
+msgstr ""
+
+#: ../libgms/API/Return.pm:469
+#, perl-brace-format
+msgid "Network routing entry is created: {table} ({entry})"
+msgstr ""
+
+#: ../libgms/API/Return.pm:471
+#, perl-brace-format
+msgid "Network routing entry is updated: {table} ({entry})"
+msgstr ""
+
+#: ../libgms/API/Return.pm:473
+#, perl-brace-format
+msgid "Network routing entry is deleted: {table} ({entry})"
+msgstr ""
+
+#: ../libgms/API/Return.pm:474
+msgid "Network routing info reloaded"
+msgstr ""
+
+#: ../libgms/API/Return.pm:476
+msgid "Network zone list is retrieved"
+msgstr ""
+
+#: ../libgms/API/Return.pm:477
+#, perl-brace-format
+msgid "Network zone is retrieved: {zone}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:478
+#, perl-brace-format
+msgid "Network zone is created: {zone}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:479
+#, perl-brace-format
+msgid "Network zone is updated: {zone}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:480
+#, perl-brace-format
+msgid "Network zone is deleted: {zone}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:483 ../libgms/API/Return.pm:485
+#, perl-brace-format
+msgid "Failed to create network zone: {zone}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:487
+#, perl-brace-format
+msgid "Failed to delete network zone: {zone}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:489
+#, perl-brace-format
+msgid "Network port is valid: {port}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:491
+#, perl-brace-format
+msgid "Failed to check network port: {port}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:497
+msgid "Found RAID controllers on the system"
+msgstr ""
+
+#: ../libgms/API/Return.pm:498
+msgid "Could not find any RAID controllers"
+msgstr ""
+
+#: ../libgms/API/Return.pm:499
+msgid "Found all physical disks on the RAID"
+msgstr ""
+
+#: ../libgms/API/Return.pm:500
+msgid "Found all logical disks on the RAID"
+msgstr ""
+
+#: ../libgms/API/Return.pm:504
+#, perl-brace-format
+msgid "Share already exists: {same_share}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:505
+#, perl-brace-format
+msgid "Share parameter is missing: {param}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:506
+msgid "Invalid share parameter"
+msgstr ""
+
+#: ../libgms/API/Return.pm:508
+msgid "All shares are listed"
+msgstr ""
+
+#: ../libgms/API/Return.pm:509
+msgid "Share info is retrieved"
+msgstr ""
+
+#: ../libgms/API/Return.pm:510
+#, perl-brace-format
+msgid "Share is created: {name}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:511
+#, perl-brace-format
+msgid "Share is deleted: {name}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:512
+#, perl-brace-format
+msgid "Share is updated: {name}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:513
+msgid "Share services are reloaded"
+msgstr ""
+
+#: ../libgms/API/Return.pm:515
+msgid "Failed to get share list"
+msgstr ""
+
+#: ../libgms/API/Return.pm:516
+msgid "Failed to get share info"
+msgstr ""
+
+#: ../libgms/API/Return.pm:517
+msgid "Failed to create share"
+msgstr ""
+
+#: ../libgms/API/Return.pm:518
+msgid "Failed to delete share"
+msgstr ""
+
+#: ../libgms/API/Return.pm:519
+msgid "Failed to update share"
+msgstr ""
+
+#: ../libgms/API/Return.pm:520
+msgid "Failde to reload share services"
+msgstr ""
+
+#: ../libgms/API/Return.pm:523
+#, perl-brace-format
+msgid "{protocol} share access is retrieved: {name}: {target}({right})"
+msgstr ""
+
+#: ../libgms/API/Return.pm:526
+#, perl-brace-format
+msgid "{protocol} share access is updated: {name}: {target}({right})"
+msgstr ""
+
+#: ../libgms/API/Return.pm:528
+#, perl-brace-format
+msgid "{protocol} shares are retrieved"
+msgstr ""
+
+#: ../libgms/API/Return.pm:529
+#, perl-brace-format
+msgid "{protocol} share is retrieved: {name}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:530
+#, perl-brace-format
+msgid "{protocol} share is enabled: {name}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:532
+#, perl-brace-format
+msgid "{protocol} share is disabled: {name}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:533
+#, perl-brace-format
+msgid "{protocol} share is updated: {name}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:535
+#, perl-brace-format
+msgid "{protocol} service is controlled: {action}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:536
+#, perl-brace-format
+msgid "{protocol} is configured"
+msgstr ""
+
+#: ../libgms/API/Return.pm:537
+#, perl-brace-format
+msgid "{protocol} config is retrieved"
+msgstr ""
+
+#: ../libgms/API/Return.pm:539
+#, perl-brace-format
+msgid "Default {protocol} zone/user/group rights are retrieved"
+msgstr ""
+
+#: ../libgms/API/Return.pm:541 ../libgms/API/Return.pm:561
+#, perl-brace-format
+msgid "{protocol} clients are retrieved"
+msgstr ""
+
+#: ../libgms/API/Return.pm:543
+#, perl-brace-format
+msgid "Failed to list {protocol} shares"
+msgstr ""
+
+#: ../libgms/API/Return.pm:545
+#, perl-brace-format
+msgid "Failed to retrieve {protocol} info: {name}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:547
+#, perl-brace-format
+msgid "Failed to enable {protocol} share: {name}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:549
+#, perl-brace-format
+msgid "Failed to disable {protocol} share: {name}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:551
+#, perl-brace-format
+msgid "Failed to update {protocol} share: {name}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:553
+#, perl-brace-format
+msgid "Failed to control {protocol} service: {action}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:555 ../libgms/API/Return.pm:557
+#, perl-brace-format
+msgid "Failed to get {protocol} config: {name}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:559
+#, perl-brace-format
+msgid "Failed to get {protocol} zone/user/group rights"
+msgstr ""
+
+#: ../libgms/API/Return.pm:566
+msgid "S.M.A.R.T. device information listed"
+msgstr ""
+
+#: ../libgms/API/Return.pm:568
+msgid "S.M.A.R.T. device attribute's information listed"
+msgstr ""
+
+#: ../libgms/API/Return.pm:570
+msgid "S.M.A.R.T. device test status listed"
+msgstr ""
+
+#: ../libgms/API/Return.pm:572
+#, perl-brace-format
+msgid "S.M.A.R.T. device test request accepted: {id}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:574
+msgid "S.M.A.R.T. device information reloading request accepted"
+msgstr ""
+
+#: ../libgms/API/Return.pm:577
+msgid "Failed to get S.M.A.R.T. device information"
+msgstr ""
+
+#: ../libgms/API/Return.pm:579
+msgid "Failed to get S.M.A.R.T. device attribute's information"
+msgstr ""
+
+#: ../libgms/API/Return.pm:581
+msgid "Failed to get S.M.A.R.T. device test status"
+msgstr ""
+
+#: ../libgms/API/Return.pm:583
+#, perl-brace-format
+msgid "S.M.A.R.T. device test trigger fail: {id}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:585
+msgid "S.M.A.R.T. device information reloading fail"
+msgstr ""
+
+#: ../libgms/API/Return.pm:590
+#, perl-brace-format
+msgid "Log name does not exist: {name}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:591
+#, perl-brace-format
+msgid "Failed to read log: {name}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:592
+msgid "All logs backed up"
+msgstr ""
+
+#: ../libgms/API/Return.pm:595
+msgid "Failed to get service status"
+msgstr ""
+
+#: ../libgms/API/Return.pm:596
+msgid "NFS needs rpcbind to run"
+msgstr ""
+
+#: ../libgms/API/Return.pm:597
+#, perl-brace-format
+msgid "Unknown service control: {control}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:600
+msgid "All configs backed up"
+msgstr ""
+
+#: ../libgms/API/Return.pm:601
+#, perl-brace-format
+msgid "Failed to read config: {config}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:603
+msgid "Failed to read version information"
+msgstr ""
+
+#: ../libgms/API/Return.pm:606
+msgid "Time config is retrieved"
+msgstr ""
+
+#: ../libgms/API/Return.pm:607
+msgid "Continents are retrieved"
+msgstr ""
+
+#: ../libgms/API/Return.pm:608
+msgid "Timezones are retrieved"
+msgstr ""
+
+#: ../libgms/API/Return.pm:609
+msgid "Time is updated"
+msgstr ""
+
+#: ../libgms/API/Return.pm:611
+#, perl-brace-format
+msgid "Test for NTP time sync is succeeded: {server}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:613
+msgid "Failed to get time config"
+msgstr ""
+
+#: ../libgms/API/Return.pm:614
+msgid "Failed to get continents"
+msgstr ""
+
+#: ../libgms/API/Return.pm:615
+#, perl-brace-format
+msgid "Failed to get timezones: {continent}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:616
+#, perl-brace-format
+msgid "Failed to set timezone: {timezone}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:617
+msgid "Failed to update time"
+msgstr ""
+
+#: ../libgms/API/Return.pm:619
+#, perl-brace-format
+msgid "Test for NTP time sync has failed: {server}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:620
+#, perl-brace-format
+msgid "Failed to set NTP server: {servers}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:622
+msgid "Beep sucessfully configured"
+msgstr ""
+
+#: ../libgms/API/Return.pm:623
+msgid "Rsyslog successfully configured"
+msgstr ""
+
+#: ../libgms/API/Return.pm:624
+msgid "SMTP successfully configured"
+msgstr ""
+
+#: ../libgms/API/Return.pm:625
+msgid "SNMP-trap successfully configured"
+msgstr ""
+
+#: ../libgms/API/Return.pm:627
+msgid "Failed to configure the Beep"
+msgstr ""
+
+#: ../libgms/API/Return.pm:628
+msgid "Failed to configure the Rsyslog"
+msgstr ""
+
+#: ../libgms/API/Return.pm:629
+msgid "Failed to configure the SMTP"
+msgstr ""
+
+#: ../libgms/API/Return.pm:630
+msgid "Failed to configure the SNMP-trap"
+msgstr ""
+
+#: ../libgms/API/Return.pm:632
+msgid "Beep notification can work normally"
+msgstr ""
+
+#: ../libgms/API/Return.pm:633
+msgid "Rsyslog notification can work normally"
+msgstr ""
+
+#: ../libgms/API/Return.pm:634
+msgid "SMTP notification can work normally"
+msgstr ""
+
+#: ../libgms/API/Return.pm:635
+msgid "SNMP-trap notification can work normally"
+msgstr ""
+
+#: ../libgms/API/Return.pm:637
+msgid "Beep notification cannot work"
+msgstr ""
+
+#: ../libgms/API/Return.pm:638
+msgid "Rsyslog notification cannot work"
+msgstr ""
+
+#: ../libgms/API/Return.pm:639
+#, perl-brace-format
+msgid "SMTP notification cannot work: {msg}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:640
+msgid "SNMP-trap notification cannot work"
+msgstr ""
+
+#: ../libgms/API/Return.pm:642
+msgid "Failed to get Beep config"
+msgstr ""
+
+#: ../libgms/API/Return.pm:643
+msgid "Failed to get Rsyslog config"
+msgstr ""
+
+#: ../libgms/API/Return.pm:644
+msgid "Failed to get SMTP config"
+msgstr ""
+
+#: ../libgms/API/Return.pm:645
+msgid "Failed to get SNMP-trap config"
+msgstr ""
+
+#: ../libgms/API/Return.pm:647
+msgid "SMTP config is retrieved"
+msgstr ""
+
+#: ../libgms/API/Return.pm:651
+#, perl-brace-format
+msgid "System will be shutdown in a while: {host}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:653
+#, perl-brace-format
+msgid "System will be reboot in a while: {host}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:654
+#, perl-brace-format
+msgid "Shutdown/Reboot is canceled: {host}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:656
+#, perl-brace-format
+msgid "Failed to shutdown system: {host}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:657
+#, perl-brace-format
+msgid "Failed to reboot system: {host}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:659
+#, perl-brace-format
+msgid "Failed to cancel shutdown/reboot system: {host}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:661
+msgid "License list is retrieved"
+msgstr ""
+
+#: ../libgms/API/Return.pm:662
+msgid "License summary is retrieved"
+msgstr ""
+
+#: ../libgms/API/Return.pm:663
+#, perl-brace-format
+msgid "License check ok ({license}: {check_info})"
+msgstr ""
+
+#: ../libgms/API/Return.pm:664
+msgid "License is reloaded"
+msgstr ""
+
+#: ../libgms/API/Return.pm:665
+msgid "Unique key is retrieved"
+msgstr ""
+
+#: ../libgms/API/Return.pm:666
+#, perl-brace-format
+msgid "License is registered: {license}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:668
+msgid "Failed to create object for license handling"
+msgstr ""
+
+#: ../libgms/API/Return.pm:669
+msgid "Failed to retrive license list"
+msgstr ""
+
+#: ../libgms/API/Return.pm:670
+msgid "Failed to retrive license summary"
+msgstr ""
+
+#: ../libgms/API/Return.pm:671
+msgid "Failed to reload license db"
+msgstr ""
+
+#: ../libgms/API/Return.pm:672
+msgid "Failed to retrive Unique key"
+msgstr ""
+
+#: ../libgms/API/Return.pm:674
+#, perl-brace-format
+msgid "Failed to register license: {license}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:676
+#, perl-brace-format
+msgid "Request is denied according to license policy: {target}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:678
+#, perl-brace-format
+msgid "Some license are already exists: {license}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:682 ../libgms/API/Return.pm:1002
+msgid "Getting task list has succeeded"
+msgstr ""
+
+#: ../libgms/API/Return.pm:683 ../libgms/API/Return.pm:1006
+msgid "Getting the number of tasks has succeeded"
+msgstr ""
+
+#: ../libgms/API/Return.pm:684 ../libgms/API/Return.pm:1259
+msgid "Failed to get the task list"
+msgstr ""
+
+#: ../libgms/API/Return.pm:685 ../libgms/API/Return.pm:1261
+msgid "Failed to get the number of tasks"
+msgstr ""
+
+#: ../libgms/API/Return.pm:690
+msgid "PVs list is retrieved"
+msgstr ""
+
+#: ../libgms/API/Return.pm:691
+#, perl-brace-format
+msgid "PV is displayed: {pv}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:692
+#, perl-brace-format
+msgid "PV is created: {pv}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:693
+#, perl-brace-format
+msgid "PV is changed: {pv}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:694
+#, perl-brace-format
+msgid "PV is removed: {pv}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:696
+msgid "Failed to list PVs"
+msgstr ""
+
+#: ../libgms/API/Return.pm:697
+#, perl-brace-format
+msgid "Failed to find PV: {pv}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:698
+#, perl-brace-format
+msgid "Failed to create PV: {pv}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:699
+#, perl-brace-format
+msgid "Failed to change PV: {pv}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:700
+#, perl-brace-format
+msgid "Failed to remove PV: {pv}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:703
+msgid "VG list is retrieved"
+msgstr ""
+
+#: ../libgms/API/Return.pm:704
+#, perl-brace-format
+msgid "VG is displayed: {vg}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:705
+#, perl-brace-format
+msgid "VG is created: {vg}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:706
+#, perl-brace-format
+msgid "VG is changed: {vg}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:707
+#, perl-brace-format
+msgid "VG is renamed: {from} -> {to}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:708
+#, perl-brace-format
+msgid "VG is removed: {vg}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:709
+#, perl-brace-format
+msgid "VG is extended: {vg}({pv})"
+msgstr ""
+
+#: ../libgms/API/Return.pm:710
+#, perl-brace-format
+msgid "VG is reduced: {vg}({pv})"
+msgstr ""
+
+#: ../libgms/API/Return.pm:711
+#, perl-brace-format
+msgid "VG is split up: {from}, {to}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:712
+#, perl-brace-format
+msgid "VG is merged: {from} -> {into}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:713
+#, perl-brace-format
+msgid "VG is checked: {vg}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:715
+msgid "Failed to list VGs"
+msgstr ""
+
+#: ../libgms/API/Return.pm:716
+#, perl-brace-format
+msgid "Failed to find VG: {vg}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:717
+#, perl-brace-format
+msgid "Failed to create VG: {vg}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:718
+#, perl-brace-format
+msgid "Failed to change VG: {vg}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:719
+msgid "Cannot change the system VG"
+msgstr ""
+
+#: ../libgms/API/Return.pm:720
+#, perl-brace-format
+msgid "Failed to rename VG: {from} -> {to}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:721
+msgid "Cannot rename the system VG"
+msgstr ""
+
+#: ../libgms/API/Return.pm:722
+#, perl-brace-format
+msgid "Failed to remove VG: {vg}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:723
+msgid "Cannot remove the system VG"
+msgstr ""
+
+#: ../libgms/API/Return.pm:724
+#, perl-brace-format
+msgid "Failed to extend VG: {vg}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:725
+#, perl-brace-format
+msgid "Failed to reduce VG: {vg}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:726
+#, perl-brace-format
+msgid "Failed to split VG: {from}, {to}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:727
+#, perl-brace-format
+msgid "Failed to merge VG: {from} -> {into}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:728
+#, perl-brace-format
+msgid "Failed to check VG: {vg}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:729
+#, perl-brace-format
+msgid "VG already exists: {vg}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:730
+#, perl-brace-format
+msgid "VG does not exist: {vg}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:733
+msgid "LV list is retrieved"
+msgstr ""
+
+#: ../libgms/API/Return.pm:734
+#, perl-brace-format
+msgid "LV is displayed: {lv}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:735
+#, perl-brace-format
+msgid "LV is created: {lv}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:736
+#, perl-brace-format
+msgid "LV is changed: {lv}(options: {options})"
+msgstr ""
+
+#: ../libgms/API/Return.pm:737
+#, perl-brace-format
+msgid "LV is renamed: {from} -> {to}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:738
+#, perl-brace-format
+msgid "LV is removed: {lv}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:740
+#, perl-brace-format
+msgid "LV is extended: {lv}(S:{size} E:{extents} P:{pvs})"
+msgstr ""
+
+#: ../libgms/API/Return.pm:741
+#, perl-brace-format
+msgid "LV is reduced: {lv}(S:{size} E:{extents})"
+msgstr ""
+
+#: ../libgms/API/Return.pm:743
+#, perl-brace-format
+msgid "LV is resized: {lv}(S:{size} E:{extents} P:{pvs})"
+msgstr ""
+
+#: ../libgms/API/Return.pm:744
+#, perl-brace-format
+msgid "LV is converted: {lv}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:746
+#, perl-brace-format
+msgid "Quota mode is set: {lv}(U:{usrquota} G:{grpquota} P:{prjquota})"
+msgstr ""
+
+#: ../libgms/API/Return.pm:749
+msgid "Failed to list LVs"
+msgstr ""
+
+#: ../libgms/API/Return.pm:750
+#, perl-brace-format
+msgid "Failed to find LV: {lv}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:751
+#, perl-brace-format
+msgid "Failed to create LV: {lv}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:753
+#, perl-brace-format
+msgid "Failed to change LV: {lv}(options: {options})"
+msgstr ""
+
+#: ../libgms/API/Return.pm:754
+msgid "Cannot change the system LV"
+msgstr ""
+
+#: ../libgms/API/Return.pm:755
+#, perl-brace-format
+msgid "Failed to rename LV: {from} -> {to}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:756
+msgid "Cannot rename the system LV"
+msgstr ""
+
+#: ../libgms/API/Return.pm:757
+#, perl-brace-format
+msgid "Failed to remove LV: {lv}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:758
+msgid "Cannot remove the system LV"
+msgstr ""
+
+#: ../libgms/API/Return.pm:760
+#, perl-brace-format
+msgid "Failed to extend: {lv}(S:{size} E:{extents} P:{pvs})"
+msgstr ""
+
+#: ../libgms/API/Return.pm:762
+#, perl-brace-format
+msgid "Failed to reduce: {lv}(S:{size} E:{extents})"
+msgstr ""
+
+#: ../libgms/API/Return.pm:764
+#, perl-brace-format
+msgid "Failed to resize: {lv}(S:{size} E:{extents} P:{pvs})"
+msgstr ""
+
+#: ../libgms/API/Return.pm:765
+#, perl-brace-format
+msgid "Failed to convert: {lv}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:767
+#, perl-brace-format
+msgid "Failed to set quota mode: {lv}(U:{usrquota} G:{grpquota} P:{prjquota})"
+msgstr ""
+
+#: ../libgms/API/Return.pm:769
+#, perl-brace-format
+msgid "LV already exists: {lv}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:770
+#, perl-brace-format
+msgid "LV does not exist: {lv}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:777
+#, perl-brace-format
+msgid "Getting the information of '{volume}' has succeeded"
+msgid_plural "Getting the information of all of volumes has succeeded"
+msgstr[0] ""
+msgstr[1] ""
+
+#: ../libgms/API/Return.pm:784
+#, perl-brace-format
+msgid "Getting the information of bricks of '{volume}' has succeeded"
+msgid_plural "Getting the information of all bricks has succeeded"
+msgstr[0] ""
+msgstr[1] ""
+
+#: ../libgms/API/Return.pm:790
+#, perl-brace-format
+msgid "Creating cluster volume '{volume}' has succeeded"
+msgstr ""
+
+#: ../libgms/API/Return.pm:792
+#, perl-brace-format
+msgid "Deleting cluster volume '{volume}' has succeeded"
+msgstr ""
+
+#: ../libgms/API/Return.pm:794
+#, perl-brace-format
+msgid "Getting options for cluster volume '{volume}' has succeeded"
+msgstr ""
+
+#: ../libgms/API/Return.pm:796
+#, perl-brace-format
+msgid "Setting '{option}' for cluster volume '{volume}' has succeeded"
+msgstr ""
+
+#: ../libgms/API/Return.pm:799
+msgid "Reloading cluster volumes has succeeded"
+msgstr ""
+
+#: ../libgms/API/Return.pm:801
+#, perl-brace-format
+msgid "Enabling quota for cluster volume '{volume}' has succeeded"
+msgstr ""
+
+#: ../libgms/API/Return.pm:803
+#, perl-brace-format
+msgid "Disabling quota for cluster volume '{volume}' has succeeded"
+msgstr ""
+
+#: ../libgms/API/Return.pm:805
+#, perl-brace-format
+msgid ""
+"Setting quota limit '{size}' for the path '{path}' on '{volume}' has "
+"succeeded"
+msgstr ""
+
+#: ../libgms/API/Return.pm:808
+#, perl-brace-format
+msgid "Deleting quota limit for the path '{path}' on '{volume}' has succeeded"
+msgstr ""
+
+#: ../libgms/API/Return.pm:811
+#, perl-brace-format
+msgid "Getting the quota list of '{volume}' has succeeded"
+msgstr ""
+
+#: ../libgms/API/Return.pm:813
+#, perl-brace-format
+msgid "Setting the '{type}' associated with quota on '{volume}'"
+msgstr ""
+
+#: ../libgms/API/Return.pm:815
+#, perl-brace-format
+msgid "Expanding cluster volume '{volume}' has succeeded"
+msgstr ""
+
+#: ../libgms/API/Return.pm:817
+#, perl-brace-format
+msgid "Extending cluster volume '{volume}' has succeeded"
+msgstr ""
+
+#: ../libgms/API/Return.pm:819
+#, perl-brace-format
+msgid "Rebalancing cluster volume '{volume}' has succeeded"
+msgstr ""
+
+#: ../libgms/API/Return.pm:821
+#, perl-brace-format
+msgid "Healing cluster volume '{volume}' has succeeded"
+msgstr ""
+
+#: ../libgms/API/Return.pm:824
+#, perl-brace-format
+msgid "Getting the status of '{volume}' has succeeded"
+msgid_plural "Getting the status of all of volumes has succeeded"
+msgstr[0] ""
+msgstr[1] ""
+
+#: ../libgms/API/Return.pm:832
+#, perl-brace-format
+msgid "Getting the information of {volume}'s snapshot has succeeded"
+msgid_plural ""
+"Getting the information of all of volumes's snapshot has succeeded"
+msgstr[0] ""
+msgstr[1] ""
+
+#: ../libgms/API/Return.pm:838
+#, perl-brace-format
+msgid "Creating the {volume}'s snapshot({snapshot}) has succeeded"
+msgstr ""
+
+#: ../libgms/API/Return.pm:841
+#, perl-brace-format
+msgid "Deleting the {volume}'s snapshot({snapshot}) has succeeded"
+msgid_plural "Deleting the all snapshot of {volume} has succeeded"
+msgstr[0] ""
+msgstr[1] ""
+
+#: ../libgms/API/Return.pm:847
+msgid "Restoring cluster volume's data has succeeded"
+msgstr ""
+
+#: ../libgms/API/Return.pm:849
+#, perl-brace-format
+msgid "Activating the {snapshot} has succeeded"
+msgstr ""
+
+#: ../libgms/API/Return.pm:851
+#, perl-brace-format
+msgid "Deactivating the {snapshot} has succeded"
+msgstr ""
+
+#: ../libgms/API/Return.pm:853
+msgid "Creating the clone of a snapshot has succeeded"
+msgstr ""
+
+#: ../libgms/API/Return.pm:855
+#, perl-brace-format
+msgid "Getting the count of available snapshot on {volume} has succeeded"
+msgstr ""
+
+#: ../libgms/API/Return.pm:860
+#, perl-brace-format
+msgid "Getting the information of {volume}'s tier has succeeded"
+msgid_plural "Getting the information of all of volumes's tier has succeeded"
+msgstr[0] ""
+msgstr[1] ""
+
+#: ../libgms/API/Return.pm:866
+#, perl-brace-format
+msgid "Attaching the {volume}'s tier has succeeded"
+msgstr ""
+
+#: ../libgms/API/Return.pm:868
+#, perl-brace-format
+msgid "Detaching the {volume}'s tier has succeeded"
+msgstr ""
+
+#: ../libgms/API/Return.pm:870
+#, perl-brace-format
+msgid "The {volume}'s tier re-configure has succeeded"
+msgstr ""
+
+#: ../libgms/API/Return.pm:872
+#, perl-brace-format
+msgid "Getting the options of {volume}'s tier has succeeded"
+msgstr ""
+
+#: ../libgms/API/Return.pm:874
+#, perl-brace-format
+msgid "Setting the options of {volume}'s tier has succeeded"
+msgstr ""
+
+#: ../libgms/API/Return.pm:877
+#, perl-brace-format
+msgid "Attaching the {volume}'s arbiter has succeeded"
+msgstr ""
+
+#: ../libgms/API/Return.pm:881
+#, perl-brace-format
+msgid "Getting the information of volume pool has succeeded: {pool}"
+msgid_plural "Getting the information of all of volume pool has succeeded"
+msgstr[0] ""
+msgstr[1] ""
+
+#: ../libgms/API/Return.pm:887
+#, perl-brace-format
+msgid "Creating the cluster volume pool '{pool}' has succeeded"
+msgstr ""
+
+#: ../libgms/API/Return.pm:889
+#, perl-brace-format
+msgid "Removing the cluster volume pool '{pool}' has succeeded"
+msgstr ""
+
+#: ../libgms/API/Return.pm:891
+#, perl-brace-format
+msgid "Re-configuration the cluster volume pool '{pool}' has succeeded"
+msgstr ""
+
+#: ../libgms/API/Return.pm:894
+msgid "Controlling CTDB has succeeded"
+msgstr ""
+
+#: ../libgms/API/Return.pm:895
+msgid "Controlling CTDB has failed"
+msgstr ""
+
+#: ../libgms/API/Return.pm:896
+msgid "Success to reload CTDB"
+msgstr ""
+
+#: ../libgms/API/Return.pm:897
+msgid "Failed to reload CTDB"
+msgstr ""
+
+#: ../libgms/API/Return.pm:900
+msgid "Reading list of storage IP has succeeded"
+msgstr ""
+
+#: ../libgms/API/Return.pm:901
+msgid "Adding new storage IP has succeeded"
+msgstr ""
+
+#: ../libgms/API/Return.pm:902
+msgid "Updating storage IP has succeeded"
+msgstr ""
+
+#: ../libgms/API/Return.pm:903
+msgid "Removing storage IP has succeeded"
+msgstr ""
+
+#: ../libgms/API/Return.pm:905
+msgid "Removing all storage IP has succeeded"
+msgstr ""
+
+#: ../libgms/API/Return.pm:907
+msgid "VIP group list has retrieved"
+msgstr ""
+
+#: ../libgms/API/Return.pm:909
+#, perl-brace-format
+msgid "new VIP group has created successfully: {name}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:911
+#, perl-brace-format
+msgid "VIP group has deleted successfully: {name}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:913
+#, perl-brace-format
+msgid "The host has added to the VIP group successfully: {group}: {host}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:916
+#, perl-brace-format
+msgid "The host has removed from the VIP group successfully: {group}: {host}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:919
+#, perl-brace-format
+msgid "The IP address has added to the VIP group successfully: {group}: {ip}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:922
+#, perl-brace-format
+msgid ""
+"The IP address has removed from the VIP group successfully: {group}: {ip}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:925
+msgid "Reading cluster version"
+msgstr ""
+
+#: ../libgms/API/Return.pm:926
+msgid "Upgrading cluster version"
+msgstr ""
+
+#: ../libgms/API/Return.pm:929
+#, perl-brace-format
+msgid "Getting the node list has succeeded ({node})"
+msgstr ""
+
+#: ../libgms/API/Return.pm:931
+#, perl-brace-format
+msgid "Getting the node description has succeeded ({node})"
+msgstr ""
+
+#: ../libgms/API/Return.pm:933
+msgid "Getting the client connections has succeeded"
+msgstr ""
+
+#: ../libgms/API/Return.pm:935
+#, perl-brace-format
+msgid "Deleting the node has succeeded ({node})"
+msgstr ""
+
+#: ../libgms/API/Return.pm:937
+#, perl-brace-format
+msgid "Backing up private volume has succeeded ({node})"
+msgstr ""
+
+#: ../libgms/API/Return.pm:939
+#, perl-brace-format
+msgid "Reloading MariaDB service has succeed on MDS ({node})"
+msgstr ""
+
+#: ../libgms/API/Return.pm:941
+#, perl-brace-format
+msgid "Reloading fluentd config has succeed on MDS ({node})"
+msgstr ""
+
+#: ../libgms/API/Return.pm:943
+#, perl-brace-format
+msgid "Reloading etcd and MariaDB config has succeed on MDS ({node})"
+msgstr ""
+
+#: ../libgms/API/Return.pm:945
+#, perl-brace-format
+msgid "Enabling publisher has succeed ({node})"
+msgstr ""
+
+#: ../libgms/API/Return.pm:947
+#, perl-brace-format
+msgid "Debug mode is retrieved: {scope}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:949
+#, perl-brace-format
+msgid "Debug mode has changed successfully: {scope}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:952
+msgid "Getting the cluster's status has succeeded"
+msgstr ""
+
+#: ../libgms/API/Return.pm:954
+msgid "Getting the node's status has succeeded"
+msgstr ""
+
+#: ../libgms/API/Return.pm:956
+msgid "Getting the clients connections has succeeded"
+msgstr ""
+
+#: ../libgms/API/Return.pm:957
+msgid "Getting the storage performance"
+msgstr ""
+
+#: ../libgms/API/Return.pm:958
+msgid "Getting the storage usage"
+msgstr ""
+
+#: ../libgms/API/Return.pm:961
+#, perl-brace-format
+msgid "Configuring the node has succeeded ({node})"
+msgstr ""
+
+#: ../libgms/API/Return.pm:963
+#, perl-brace-format
+msgid "Initializing the master node has succeeded ({node})"
+msgstr ""
+
+#: ../libgms/API/Return.pm:964
+msgid "Being joined to cluster has succeeded"
+msgstr ""
+
+#: ../libgms/API/Return.pm:966
+#, perl-brace-format
+msgid "Expanding the cluster has succeeded ({node})"
+msgstr ""
+
+#: ../libgms/API/Return.pm:968
+#, perl-brace-format
+msgid "Detaching the node has succeeded ({node})"
+msgstr ""
+
+#: ../libgms/API/Return.pm:971
+#, perl-brace-format
+msgid "Executing 'gluster peer probe' has succeeded ({node})"
+msgstr ""
+
+#: ../libgms/API/Return.pm:973
+#, perl-brace-format
+msgid "Executing 'gluster peer detach' has succeeded ({node})"
+msgstr ""
+
+#: ../libgms/API/Return.pm:975
+#, perl-brace-format
+msgid "Starting glusterd has succeeded ({node})"
+msgstr ""
+
+#: ../libgms/API/Return.pm:977
+#, perl-brace-format
+msgid "Stoping glusterd has succeeded ({node})"
+msgstr ""
+
+#: ../libgms/API/Return.pm:979
+#, perl-brace-format
+msgid "Restarting glusterd has succeeded ({node})"
+msgstr ""
+
+#: ../libgms/API/Return.pm:981
+#, perl-brace-format
+msgid "Clearing gluster volume file has succeeded ({node})"
+msgstr ""
+
+#: ../libgms/API/Return.pm:985
+msgid "Getting the information of volume's schedule has succeeded"
+msgid_plural ""
+"Getting the information of all of volumes's schedule has succeeded"
+msgstr[0] ""
+msgstr[1] ""
+
+#: ../libgms/API/Return.pm:990
+msgid "Creating the schedule has succeeded"
+msgstr ""
+
+#: ../libgms/API/Return.pm:991
+msgid "Deleting the schedule has succeeded"
+msgstr ""
+
+#: ../libgms/API/Return.pm:993
+msgid "Changing the configuration of schedule has succeeded"
+msgstr ""
+
+#: ../libgms/API/Return.pm:996
+#, perl-brace-format
+msgid "Setting the stage has succeeded: {scope}: {stage}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:997
+msgid "Getting the stage has succeeded"
+msgstr ""
+
+#: ../libgms/API/Return.pm:998
+msgid "Getting the stage list has succeeded"
+msgstr ""
+
+#: ../libgms/API/Return.pm:999
+msgid "Getting the stage info has succeeded"
+msgstr ""
+
+#: ../libgms/API/Return.pm:1010
+msgid "Shutting down cluster has succeeded"
+msgstr ""
+
+#: ../libgms/API/Return.pm:1011
+msgid "Rebooting cluster has succeeded"
+msgstr ""
+
+#: ../libgms/API/Return.pm:1014
+#, perl-brace-format
+msgid "Failed to create the snapshot of {volume}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:1017
+#, perl-brace-format
+msgid "Failed to get snapshot list of {volume}"
+msgid_plural "Failed to get the list of all of snapshots"
+msgstr[0] ""
+msgstr[1] ""
+
+#: ../libgms/API/Return.pm:1023
+#, perl-brace-format
+msgid "Failed to get the information of {snapshot}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:1025
+#, perl-brace-format
+msgid "Failed to activate the {snapshot}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:1027
+#, perl-brace-format
+msgid "Failed to deactivate the {snapshot}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:1029
+#, perl-brace-format
+msgid "Failed to delete the {snapshot}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:1031
+#, perl-brace-format
+msgid "Failed to create the clone of a {snapshot}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:1033
+#, perl-brace-format
+msgid "Failed to get the count of available snapshot on {volume}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:1037
+#, perl-brace-format
+msgid "Failed to get the information of {volume}'s tier"
+msgid_plural "Failed to get the information of all of volumes's tier"
+msgstr[0] ""
+msgstr[1] ""
+
+#: ../libgms/API/Return.pm:1043
+#, perl-brace-format
+msgid "Failed to attach the {volume}'s tier"
+msgstr ""
+
+#: ../libgms/API/Return.pm:1045
+#, perl-brace-format
+msgid "Failed to detach the {volume}'s tier"
+msgstr ""
+
+#: ../libgms/API/Return.pm:1047
+#, perl-brace-format
+msgid "Failed to re-configure the {volume}'s tier"
+msgstr ""
+
+#: ../libgms/API/Return.pm:1049
+#, perl-brace-format
+msgid "Failed to get the options of {volume}'s tier"
+msgstr ""
+
+#: ../libgms/API/Return.pm:1051
+#, perl-brace-format
+msgid "Failed to set the options of {volume}'s tier"
+msgstr ""
+
+#: ../libgms/API/Return.pm:1054
+#, perl-brace-format
+msgid "Failed to attach the {volume}'s arbiter"
+msgstr ""
+
+#: ../libgms/API/Return.pm:1058
+#, perl-brace-format
+msgid "Failed to get schedule list of {sched}"
+msgid_plural "Failed to get all of schedule list"
+msgstr[0] ""
+msgstr[1] ""
+
+#: ../libgms/API/Return.pm:1064
+#, perl-brace-format
+msgid "Failed to create the schedule of {sched}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:1066
+#, perl-brace-format
+msgid "Failed to delete the schedule of {sched}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:1068
+#, perl-brace-format
+msgid "Failed to change the configuration of {sched} schedule"
+msgstr ""
+
+#: ../libgms/API/Return.pm:1072
+#, perl-brace-format
+msgid "Failed to get information of volume pool '{pool}'"
+msgid_plural "Failed to get all of volume pool's information"
+msgstr[0] ""
+msgstr[1] ""
+
+#: ../libgms/API/Return.pm:1078
+#, perl-brace-format
+msgid "Failed to create cluster volume pool '{pool}'"
+msgstr ""
+
+#: ../libgms/API/Return.pm:1080
+#, perl-brace-format
+msgid "Cluster volume pool already exists: '{pool}'"
+msgstr ""
+
+#: ../libgms/API/Return.pm:1082
+#, perl-brace-format
+msgid "Cluster volume pool does not exist: '{pool}'"
+msgstr ""
+
+#: ../libgms/API/Return.pm:1084
+#, perl-brace-format
+msgid "Failed to remove cluster volume pool '{pool}'"
+msgstr ""
+
+#: ../libgms/API/Return.pm:1086
+#, perl-brace-format
+msgid "Could not remove opened volume pool '{pool}'"
+msgstr ""
+
+#: ../libgms/API/Return.pm:1088
+#, perl-brace-format
+msgid "Failed to re-configurate cluster volume pool '{pool}'"
+msgstr ""
+
+#: ../libgms/API/Return.pm:1091
+#, perl-brace-format
+msgid "Failed to get the information of cluster volume: {volume}"
+msgid_plural "Failed to get the information of all of cluster volumes"
+msgstr[0] ""
+msgstr[1] ""
+
+#: ../libgms/API/Return.pm:1098
+#, perl-brace-format
+msgid "Failed to get the information of bricks of {volume}"
+msgid_plural "Failed to get the information of all bricks"
+msgstr[0] ""
+msgstr[1] ""
+
+#: ../libgms/API/Return.pm:1105
+#, perl-brace-format
+msgid "Failed to create cluster volume: {volume}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:1107
+#, perl-brace-format
+msgid "Cluster volume already exists: {volume}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:1109
+#, perl-brace-format
+msgid "Cluster volume does not exist: {volume}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:1111
+#, perl-brace-format
+msgid "Failed to delete cluster volume: {volume}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:1113
+#, perl-brace-format
+msgid "Failed to get options for cluster volume: {volume}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:1115
+#, perl-brace-format
+msgid "Failed to set option for cluster volume: {volume}(option: {option})"
+msgstr ""
+
+#: ../libgms/API/Return.pm:1118
+msgid "Failed to reload the cluster volumes"
+msgstr ""
+
+#: ../libgms/API/Return.pm:1120
+#, perl-brace-format
+msgid "Failed to enable quota for cluster volume: {volume}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:1122
+#, perl-brace-format
+msgid "Failed to disable quota for cluster volume: {volume}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:1124
+#, perl-brace-format
+msgid "Failed to set quota limit '{size}' for the path '{path}' on '{volume}'"
+msgstr ""
+
+#: ../libgms/API/Return.pm:1127
+#, perl-brace-format
+msgid "Failed to delete quota limit for the path '{path}' on '{volume}'"
+msgstr ""
+
+#: ../libgms/API/Return.pm:1130
+#, perl-brace-format
+msgid "Failed to get the quota list of '{volume}'"
+msgstr ""
+
+#: ../libgms/API/Return.pm:1132
+#, perl-brace-format
+msgid "Failed to set the '{type}' associated with quota on '{volume}'"
+msgstr ""
+
+#: ../libgms/API/Return.pm:1135
+#, perl-brace-format
+msgid "Failed to expand cluster volume: {volume}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:1137
+#, perl-brace-format
+msgid "Failed to extend cluster volume: {volume}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:1139
+#, perl-brace-format
+msgid "Failed to rebalance cluster volume: {volume}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:1141
+msgid "Cluster volume heal is NOT supported yet"
+msgstr ""
+
+#: ../libgms/API/Return.pm:1144
+#, perl-brace-format
+msgid "Failed to get the status of '{volume}'"
+msgid_plural "Failed to get the status of all of cluster volumes"
+msgstr[0] ""
+msgstr[1] ""
+
+#: ../libgms/API/Return.pm:1150
+#, perl-brace-format
+msgid "Failed to create volume that is already exists: {volume}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:1152
+#, perl-brace-format
+msgid "Failed to export external volume: {pool}, {volume}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:1155
+#, perl-brace-format
+msgid "Failed to import external volume: {pool}/{volume}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:1157
+msgid "Failed to connect API"
+msgstr ""
+
+#: ../libgms/API/Return.pm:1160
+#, perl-brace-format
+msgid "Failed to connect to {target_address}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:1162
+#, perl-brace-format
+msgid "Failed to configure the node ({node})"
+msgstr ""
+
+#: ../libgms/API/Return.pm:1164
+#, perl-brace-format
+msgid "Failed to initialize the master node ({node})"
+msgstr ""
+
+#: ../libgms/API/Return.pm:1166
+#, perl-brace-format
+msgid "Failed to join to the cluster ({node})"
+msgstr ""
+
+#: ../libgms/API/Return.pm:1168
+#, perl-brace-format
+msgid "Failed to expand the cluster ({node})"
+msgstr ""
+
+#: ../libgms/API/Return.pm:1169
+#, perl-brace-format
+msgid "Failed to attach the node ({node})"
+msgstr ""
+
+#: ../libgms/API/Return.pm:1170
+#, perl-brace-format
+msgid "Failed to detach the node ({node})"
+msgstr ""
+
+#: ../libgms/API/Return.pm:1173
+#, perl-brace-format
+msgid "Failed to get the node list ({node})"
+msgstr ""
+
+#: ../libgms/API/Return.pm:1175
+#, perl-brace-format
+msgid "Failed to get the node descriptions ({node})"
+msgstr ""
+
+#: ../libgms/API/Return.pm:1177
+msgid "Failed to get the client connections"
+msgstr ""
+
+#: ../libgms/API/Return.pm:1179
+#, perl-brace-format
+msgid "Failed to delete the node ({node})"
+msgstr ""
+
+#: ../libgms/API/Return.pm:1181
+#, perl-brace-format
+msgid "Failed to backup the private volume ({node})"
+msgstr ""
+
+#: ../libgms/API/Return.pm:1183
+#, perl-brace-format
+msgid "Failed to reload MariaDB on MDS ({node})"
+msgstr ""
+
+#: ../libgms/API/Return.pm:1185
+#, perl-brace-format
+msgid "Failed to reload fluentd config on MDS ({node})"
+msgstr ""
+
+#: ../libgms/API/Return.pm:1187
+#, perl-brace-format
+msgid "Failed to reload etcd and MariaDB config on MDS ({node})"
+msgstr ""
+
+#: ../libgms/API/Return.pm:1189
+#, perl-brace-format
+msgid "Failed to enable publisher ({node})"
+msgstr ""
+
+#: ../libgms/API/Return.pm:1191
+#, perl-brace-format
+msgid "Failed to configure debug mode: {scope}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:1194
+#, perl-brace-format
+msgid "Failed to get the cluster's status ({node})"
+msgstr ""
+
+#: ../libgms/API/Return.pm:1196
+#, perl-brace-format
+msgid "Failed to get the node's status ({node})"
+msgstr ""
+
+#: ../libgms/API/Return.pm:1198
+#, perl-brace-format
+msgid "Failed to get the clients connections ({node})"
+msgstr ""
+
+#: ../libgms/API/Return.pm:1200
+#, perl-brace-format
+msgid "Failed to get the storage performance ({node})"
+msgstr ""
+
+#: ../libgms/API/Return.pm:1202
+msgid "Failed to get the storage usage"
+msgstr ""
+
+#: ../libgms/API/Return.pm:1204
+msgid "Failed to add the storage IP"
+msgstr ""
+
+#: ../libgms/API/Return.pm:1205
+msgid "Failed to update the storage IP"
+msgstr ""
+
+#: ../libgms/API/Return.pm:1206
+msgid "Failed to remove the storage IP"
+msgstr ""
+
+#: ../libgms/API/Return.pm:1208
+msgid "Failed to remove some storage IP"
+msgstr ""
+
+#: ../libgms/API/Return.pm:1210
+msgid "Failed to remove all storage IP"
+msgstr ""
+
+#: ../libgms/API/Return.pm:1212 ../libgms/API/Return.pm:1233
+msgid "The same storage IP pool is already exists"
+msgstr ""
+
+#: ../libgms/API/Return.pm:1214 ../libgms/API/Return.pm:1235
+msgid "The overlapped storage IP pool is already exists"
+msgstr ""
+
+#: ../libgms/API/Return.pm:1216 ../libgms/API/Return.pm:1237
+msgid "The storage IP pool is not exists"
+msgstr ""
+
+#: ../libgms/API/Return.pm:1218 ../libgms/API/Return.pm:1239
+msgid "The storage IP pool could not be reduced"
+msgstr ""
+
+#: ../libgms/API/Return.pm:1221
+#, perl-brace-format
+msgid "Failed to execute 'gluster peer probe' ({node})"
+msgstr ""
+
+#: ../libgms/API/Return.pm:1223
+#, perl-brace-format
+msgid "Failed to execute 'gluster peer detach' ({node})"
+msgstr ""
+
+#: ../libgms/API/Return.pm:1225
+#, perl-brace-format
+msgid "Failed to start glusterd ({node})"
+msgstr ""
+
+#: ../libgms/API/Return.pm:1226
+#, perl-brace-format
+msgid "Failed to stop glusterd ({node})"
+msgstr ""
+
+#: ../libgms/API/Return.pm:1228
+#, perl-brace-format
+msgid "Failed to restart glusterd ({node})"
+msgstr ""
+
+#: ../libgms/API/Return.pm:1230
+#, perl-brace-format
+msgid "Failed to clear gluster volume file ({node})"
+msgstr ""
+
+#: ../libgms/API/Return.pm:1242
+#, perl-brace-format
+msgid "Failed to set the stage({stage}) in the scope({scope})"
+msgstr ""
+
+#: ../libgms/API/Return.pm:1244
+#, perl-brace-format
+msgid "Failed to get the stage in the scope({scope})"
+msgstr ""
+
+#: ../libgms/API/Return.pm:1246
+#, perl-brace-format
+msgid "Failed to get the stage list in the scope({scope})"
+msgstr ""
+
+#: ../libgms/API/Return.pm:1247
+msgid "Failed to get the stage info"
+msgstr ""
+
+#: ../libgms/API/Return.pm:1250
+msgid "Getting the all of block device info has succeeded"
+msgstr ""
+
+#: ../libgms/API/Return.pm:1252
+msgid "Failed to get the all of block device info"
+msgstr ""
+
+#: ../libgms/API/Return.pm:1254
+#, perl-brace-format
+msgid "This block device is currently in use: {node}/{device}"
+msgstr ""
+
+#: ../libgms/API/Return.pm:1256
+#, perl-brace-format
+msgid "This block device does not exists: {node}/{device}"
+msgstr ""

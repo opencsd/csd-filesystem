@@ -1,0 +1,5 @@
+{
+    "return" : "false",
+    "msg"    : "Unknown URI",
+    "entity" : null
+}

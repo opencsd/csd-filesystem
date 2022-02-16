@@ -1,0 +1,16 @@
+#!/bin/sh
+
+[ -f /var/lib/gms/functions ] && . /var/lib/gms/functions
+
+log "INFO" "[NODE] Migration for 3.0.4-3"
+
+log "INFO" "[NODE] Reloading block device info..."
+
+perl -I/usr/gms/libgms -MBlock::BlockCtl -e 'Block::BlockCtl->new->get();'
+
+if [ $? != 0 ]; then
+    log "ERR" "[NODE] Failed to reload block device info"
+    exit 255
+fi
+
+log "INFO" "[NODE] Migration is done"

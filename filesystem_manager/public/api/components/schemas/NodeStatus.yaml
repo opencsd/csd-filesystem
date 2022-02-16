@@ -1,0 +1,49 @@
+description: Current status of this GMS cluster node
+type: object
+properties:
+  Strg_Out_Byte_Sec:
+    type: number
+  Mgmt_Hostname:
+    type: string
+  Details:
+    type: object
+  Node_Used_Size:
+    type: number
+  Netw_Out_Byte_Sec:
+    type: number
+  Status:
+    type: string
+  Activated:
+    type: boolean
+  Stage:
+    type: string
+  Node_All_Size:
+    type: integer
+  Netw_In_Byte_Sec:
+    type: number
+  Mgmt_IP:
+    type: object
+    properties:
+      ip:
+        type: string
+      netmask:
+        type: string
+  Storage_IP:
+    type: object
+    properties:
+      ip:
+        type: string
+      netmask:
+        type: string
+  Service_IP:
+    type: array
+    items:
+      type: string
+  Strg_In_Byte_Sec:
+    type: number
+  Node_Usage:
+    type: string
+  Roles:
+    type: array
+    items:
+      type: string

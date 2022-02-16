@@ -1,0 +1,19 @@
+description: present LDAP authentication config
+type: object
+properties:
+  Host:
+    type: string
+  BaseDN:
+    type: string
+  BindDN:
+    type: string
+  BindPw:
+    type: string
+  PasswdDN:
+    type: string
+  ShadowDN:
+    type: string
+  GroupDN:
+    type: string
+  SSL:
+    type: string

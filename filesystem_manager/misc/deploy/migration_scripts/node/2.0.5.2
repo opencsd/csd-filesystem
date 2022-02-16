@@ -1,0 +1,1048 @@
+#!/bin/sh
+
+[ -f /var/lib/gms/functions ] && . /var/lib/gms/functions
+
+function gen_prometheus_config
+{
+    local SCOPE=$1
+    local MATCH_CLUSTER=$(grep --text --line-number '^PAYLOAD_CLUSTER:$' $0 | cut -d ':' -f 1)
+    local MATCH_NODE=$(grep --text --line-number '^PAYLOAD_NODE:$' $0 | cut -d ':' -f 1)
+
+    if [ -z "$SCOPE" ] || [ "${SCOPE^^}" == "CLUSTER" ]; then
+        sed -n "$((MATCH_CLUSTER+1)),$((MATCH_NODE-1))p;" $0 > /usr/gms/misc/grafana/prometheus_cluster.json
+
+        if [ $? -ne 0 ]; then
+            log "ERR" "[NODE] Failed to generate prometheus config for cluster"
+            return 1
+        fi
+    fi
+
+    if [ -z "$SCOPE" ] || [ "${SCOPE^^}" == "NODE" ]; then
+        sed -n "$((MATCH_NODE+1)),\$p;" $0 > /usr/gms/misc/grafana/prometheus_node.json
+
+        if [ $? -ne 0 ]; then
+            log "ERR" "[NODE] Failed to generate prometheus config for node"
+            return 1
+        fi
+    fi
+
+    return 0
+}
+
+log "INFO" "[NODE] Migration for 2.0.5.2"
+
+log "INFO" "[NODE] temporarily prometheus configuration..."
+
+if [ -e /usr/gms/script/launch_prometheus ]; then
+    if [ -e /etc/supervisord.conf ] || [ -L /etc/supervisord.conf ]; then
+        cp /etc/supervisord.conf /etc/supervisord.conf.back
+    fi
+
+    echo \
+"[program:node_exporter]
+user=root
+process_name=node_exporter
+startsecs=5
+autostart=true
+autorestart=unexpected
+command=/usr/gms/misc/grafana/node_exporter/node_exporter
+"\
+    >> /etc/supervisord.conf
+
+    if [ -e '/usr/gms/misc/mds' ]; then
+        echo \
+"[program:prometheus]
+user=root
+process_name=prometheus
+startsecs=15
+autostart=true
+autorestart=unexpected
+command=/usr/gms/misc/grafana/prometheus/prometheus -config.file=/mnt/private/GMS/conf/prometheus.yml
+"\
+        >> /etc/supervisord.conf
+    fi
+
+    /usr/gms/script/launch_prometheus
+
+    SUPERVISORD_PID=`pgrep supervisord`
+
+    if [ $SUPERVISORD_PID ]; then
+        kill -9 $SUPERVISORD_PID
+    fi
+
+    /usr/bin/supervisord -c /etc/supervisord.conf
+
+    sleep 15
+
+    supervisorctl stop node_exporter
+    supervisorctl start node_exporter
+
+    sleep 15
+
+    if [ -e '/usr/gms/misc/mds' ]; then
+        supervisorctl stop prometheus
+        supervisorctl start prometheus
+    fi
+else
+    log "WARN" "[NODE] Failed to configure prometheus"
+    log "WARN" "       because the required script(launch_prometheus) is not exist"
+fi
+
+if [ -e '/usr/gms/misc/mds' ]; then
+    log "INFO" "[NODE] Install package: grafana"
+
+    yum -y install grafana
+
+    if [ $? -ne 0 ]; then
+        log "ERR" "[NODE] Failed to install package: grafana"
+        exit $?
+    fi
+
+    log "INFO" "[NODE] Copy the configuration file: grafana"
+
+    cp -f /usr/gms/misc/grafana/grafana.ini /etc/grafana/
+
+    if [ $? -ne 0 ]; then
+        log "ERR" "[NODE] Failed to copy the configuration file: grafana"
+        exit $?
+    fi
+
+    log "INFO" "[NODE] Register grafana into chkconfig"
+
+    chkconfig --add grafana-server
+
+    log "INFO" "[NODE] Start service: grafana"
+
+    ACTION='start'
+
+    for i in `seq 1 3`;
+    do
+        service grafana-server $ACTION
+
+        STATUS=$?
+
+        if [ $STATUS -eq 0 ]; then
+            log "INFO" "[NODE] Service has started: grafana"
+            break
+        fi
+
+        ACTION='restart'
+
+        if [ $i -eq 3 ]; then
+            log "ERR" "[NODE] Failed to start service: grafana"
+            exit $STATUS
+        else
+            log "INFO" "[NODE] ($i) Retry to start service: grafana"
+        fi
+    done;
+
+    log "INFO" "[NODE] ------- Generate grafana dashboard ------"
+
+    log "INFO" "[NODE] Step 1: Login into grafana"
+
+    curl --cookie /tmp/cookies.txt --cookie-jar /tmp/tmpcookies.txt \ -XPOST \
+        http://127.0.0.1:8890/login -H "Content-Type: application/json" \
+        -d '{"user":"admin","email":"","password":"admin"}' &>/dev/null
+
+    if [ $? -ne 0 ]; then
+        log "ERR" "[NODE] Failed to login into grafana"
+        exit $?
+    fi
+
+    log "INFO" "[NODE] Step 2: Add prometheus as datasource"
+
+    curl --cookie /tmp/tmpcookies.txt -XPOST \
+        http://127.0.0.1:8890/api/datasources -H "Content-Type: application/json" \
+        -d '{"name":"prometheus","type":"prometheus","url":"http://127.0.0.1:9090","access":"proxy"}' &>/dev/null
+
+    if [ $? -ne 0 ]; then
+        log "ERR" "[NODE] Failed to add prometheus as datasource"
+        exit $?
+    fi
+
+    log "INFO" "[NODE] Step 3: Add cluster dashboard"
+
+    CONFIG="/usr/gms/misc/grafana/prometheus_cluster.json"
+
+    if [ ! -f $CONFIG ]; then
+        log "INFO" "[NODE] Generating prometheus cluster config..."
+
+        gen_prometheus_config 'cluster'
+
+        if [ $? -ne 0 ]; then
+            log "ERR" "[NODE] Failed to generate prometheus config for cluster"
+            exit $?
+        fi
+    fi
+
+    JSON='{"dashboard":'`cat $CONFIG`'}'
+
+    # create cluster dashboard
+    curl --cookie /tmp/tmpcookies.txt -XPOST \
+        http://127.0.0.1:8890/api/dashboards/db -H "Content-Type: application/json" \
+        -d "$JSON" &>/dev/null
+
+    if [ $? -ne 0 ]; then
+        log "ERR" "[NODE] Failed to add cluster dashboard"
+        exit $?
+    fi
+
+    log "INFO" "[NODE] Step 4: Generate configuration for node dashboard"
+
+    CONFIG="/usr/gms/misc/grafana/prometheus_node.json"
+
+    if [ ! -f $CONFIG ]; then
+        log "INFO" "[NODE] Generating prometheus node config..."
+
+        gen_prometheus_config 'node'
+
+        if [ $? -ne 0 ]; then
+            log "ERR" "[NODE] Failed to generate prometheus config for node"
+            exit $?
+        fi
+    fi
+
+    python /usr/gms/misc/deploy/migration_scripts/cluster/node_grafana.2.0.5.2.py
+
+    if [ $? -ne 0 ]; then
+        log "ERR" "[NODE] Failed to generate configuration for node dashboard"
+        exit $?
+    fi
+
+    log "INFO" "[NODE] Step 5: Add node dashboard"
+
+    JSON='{"dashboard":'`cat /tmp/prometheus_node.2.0.5.2.json`'}'
+
+    # create node dashboard
+    curl --cookie /tmp/tmpcookies.txt -XPOST \
+        http://127.0.0.1:8890/api/dashboards/db -H "Content-Type: application/json" \
+        -d"$JSON" &>/dev/null
+
+    if [ $? -ne 0 ]; then
+        log "ERR" "[NODE] Failed to add node dashboard"
+        exit $?
+    fi
+
+    log "INFO" "[NODE] ------- End generating grafana dashboard ------"
+
+    log "INFO" "[NODE] Clean temp files"
+
+    rm -f /tmp/tmpcookies.txt
+    rm -f /tmp/prometheus_node.2.0.5.2.json
+
+fi
+
+log "INFO" "[NODE] Migration is done"
+
+exit 0
+
+PAYLOAD_CLUSTER:
+{
+  "__inputs": [
+    {
+      "name": "prometheus",
+      "label": "prometheus_cluster",
+      "description": "",
+      "type": "datasource",
+      "pluginId": "prometheus",
+      "pluginName": "Prometheus"
+    }
+  ],
+  "__requires": [
+    {
+      "type": "grafana",
+      "id": "grafana",
+      "name": "Grafana",
+      "version": "4.4.1"
+    },
+    {
+      "type": "panel",
+      "id": "graph",
+      "name": "Graph",
+      "version": ""
+    },
+    {
+      "type": "datasource",
+      "id": "prometheus",
+      "name": "Prometheus",
+      "version": "1.0.0"
+    }
+  ],
+  "annotations": {
+    "list": []
+  },
+  "editMode": false,
+  "editable": true,
+  "gnetId": null,
+  "graphTooltip": 0,
+  "hideControls": false,
+  "id": null,
+  "links": [],
+  "rows": [
+    {
+      "collapse": false,
+      "height": "250px",
+      "panels": [
+        {
+          "aliasColors": {},
+          "bars": false,
+          "dashLength": 10,
+          "dashes": false,
+          "datasource": "prometheus",
+          "decimals": 3,
+          "fill": 1,
+          "id": 1,
+          "legend": {
+            "avg": false,
+            "current": false,
+            "max": false,
+            "min": false,
+            "show": true,
+            "total": false,
+            "values": false
+          },
+          "lines": true,
+          "linewidth": 1, "links": [],
+          "nullPointMode": "connected",
+          "percentage": false,
+          "pointradius": 5,
+          "points": false,
+          "renderer": "flot",
+          "seriesOverrides": [],
+          "spaceLength": 10,
+          "span": 12,
+          "stack": false,
+          "steppedLine": false,
+          "targets": [
+            {
+              "expr": "avg(sum by (job) (irate(node_cpu{mode='system'}[5m])))*100",
+              "format": "time_series",
+              "hide": false,
+              "interval": "10s",
+              "intervalFactor": 1,
+              "legendFormat": "system",
+              "refId": "A",
+              "step": 30
+            },
+            {
+              "expr": "avg(sum by (job) (irate(node_cpu{mode='user'}[5m])))*100",
+              "format": "time_series",
+              "intervalFactor": 1,
+              "legendFormat": "user",
+              "refId": "B",
+              "step": 30
+            },
+            {
+              "expr": "avg(sum by (job) (irate(node_cpu{mode='nice'}[5m])))*100",
+              "format": "time_series",
+              "intervalFactor": 1,
+              "legendFormat": "nice",
+              "refId": "C",
+              "step": 30
+            },
+            {
+              "expr": "avg(sum by (job) (irate(node_cpu{mode='iowait'}[5m])))*100",
+              "format": "time_series",
+              "intervalFactor": 1,
+              "legendFormat": "iowait",
+              "refId": "D",
+              "step": 30
+            },
+            {
+              "expr": "avg(sum by (job) (irate(node_cpu{mode='irq'}[5m])))*100",
+              "format": "time_series",
+              "intervalFactor": 1,
+              "legendFormat": "irq",
+              "refId": "E",
+              "step": 30
+            },
+            {
+              "expr": "avg(sum by (job) (irate(node_cpu{mode='softirq'}[5m])))*100",
+              "format": "time_series",
+              "intervalFactor": 1,
+              "legendFormat": "softirq",
+              "refId": "F",
+              "step": 30
+            }
+          ],
+          "thresholds": [],
+          "timeFrom": null,
+          "timeShift": null,
+          "title": "Cluster CPU",
+          "tooltip": {
+            "shared": true,
+            "sort": 0,
+            "value_type": "individual"
+          },
+          "type": "graph",
+          "xaxis": {
+            "buckets": null,
+            "mode": "time",
+            "name": null,
+            "show": true,
+            "values": []
+          },
+          "yaxes": [
+            {
+              "format": "percent",
+              "label": "",
+              "logBase": 1,
+              "max": "100",
+              "min": "0",
+              "show": true
+            },
+            {
+              "format": "short",
+              "label": null,
+              "logBase": 1,
+              "max": null,
+              "min": null,
+              "show": true
+            }
+          ]
+        }
+      ],
+      "repeat": null,
+      "repeatIteration": null,
+      "repeatRowId": null,
+      "showTitle": false,
+      "title": "Cluster CPU",
+      "titleSize": "h6"
+    },
+    {
+      "collapse": false,
+      "height": 250,
+      "panels": [
+        {
+          "aliasColors": {
+            "in": "#EAB839",
+            "out": "#7EB26D"
+          },
+          "bars": false,
+          "dashLength": 10,
+          "dashes": false,
+          "datasource": "prometheus",
+          "fill": 1,
+          "id": 3,
+          "legend": {
+            "avg": false,
+            "current": false,
+            "max": false,
+            "min": false,
+            "show": true,
+            "total": false,
+            "values": false
+          },
+          "lines": true,
+          "linewidth": 1,
+          "links": [],
+          "minSpan": 2,
+          "nullPointMode": "connected",
+          "percentage": false,
+          "pointradius": 5,
+          "points": false,
+          "renderer": "flot",
+          "seriesOverrides": [],
+          "spaceLength": 10,
+          "span": 6,
+          "stack": false,
+          "steppedLine": false,
+          "targets": [
+            {
+              "expr": "sum(irate(node_network_receive_bytes{device=~'bond1'}[5m]))*100",
+              "format": "time_series",
+              "intervalFactor": 1,
+              "legendFormat": "in",
+              "refId": "A",
+              "step": 30
+            },
+            {
+              "expr": "sum(irate(node_network_transmit_bytes{device=~'bond1'}[5m]))*100",
+              "format": "time_series",
+              "intervalFactor": 1,
+              "legendFormat": "out",
+              "refId": "B",
+              "step": 30
+            }
+          ],
+          "thresholds": [],
+          "timeFrom": null,
+          "timeShift": null,
+          "title": "Cluster Network I/O",
+          "tooltip": {
+            "shared": true,
+            "sort": 0,
+            "value_type": "individual"
+          },
+          "type": "graph",
+          "xaxis": {
+            "buckets": null,
+            "mode": "time",
+            "name": null,
+            "show": true,
+            "values": []
+          },
+          "yaxes": [
+            {
+              "format": "decbytes",
+              "label": "",
+              "logBase": 1,
+              "max": null,
+              "min": null,
+              "show": true
+            },
+            {
+              "format": "short",
+              "label": null,
+              "logBase": 1,
+              "max": null,
+              "min": null,
+              "show": true
+            }
+          ]
+        },
+        {
+          "aliasColors": {},
+          "bars": false,
+          "dashLength": 10,
+          "dashes": false,
+          "datasource": "prometheus",
+          "fill": 1,
+          "id": 4,
+          "legend": {
+            "avg": false,
+            "current": false,
+            "max": false,
+            "min": false,
+            "show": true,
+            "total": false,
+            "values": false
+          },
+          "lines": true,
+          "linewidth": 1,
+          "links": [],
+          "nullPointMode": "null",
+          "percentage": false,
+          "pointradius": 5,
+          "points": false,
+          "renderer": "flot",
+          "seriesOverrides": [],
+          "spaceLength": 10,
+          "span": 6,
+          "stack": false,
+          "steppedLine": false,
+          "targets": [
+            {
+              "expr": "sum(irate(node_disk_sectors_written{device='sdb'}[5m]))*2",
+              "format": "time_series",
+              "intervalFactor": 1,
+              "legendFormat": "write",
+              "refId": "A",
+              "step": 30
+            },
+            {
+              "expr": "sum(irate(node_disk_sectors_read{device='sdb'}[5m]))*2",
+              "format": "time_series",
+              "intervalFactor": 1,
+              "legendFormat": "read",
+              "refId": "B",
+              "step": 30
+            }
+          ],
+          "thresholds": [],
+          "timeFrom": null,
+          "timeShift": null,
+          "title": "Cluster Disk I/O",
+          "tooltip": {
+            "shared": true,
+            "sort": 0,
+            "value_type": "individual"
+          },
+          "type": "graph",
+          "xaxis": {
+            "buckets": null,
+            "mode": "time",
+            "name": null,
+            "show": true,
+            "values": []
+          },
+          "yaxes": [
+            {
+              "format": "decbytes",
+              "label": "",
+              "logBase": 1,
+              "max": null,
+              "min": null,
+              "show": true
+            },
+            {
+              "format": "short",
+              "label": null,
+              "logBase": 1,
+              "max": null,
+              "min": null,
+              "show": true
+            }
+          ]
+        }
+      ],
+      "repeat": null,
+      "repeatIteration": null,
+      "repeatRowId": null,
+      "showTitle": false,
+      "title": "Cluster Network I/O",
+      "titleSize": "h6"
+    }
+  ],
+  "schemaVersion": 14,
+  "style": "light",
+  "tags": [],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "timepicker": {
+    "refresh_intervals": [
+      "5s",
+      "10s",
+      "30s",
+      "1m",
+      "5m",
+      "15m",
+      "30m",
+      "1h",
+      "2h",
+      "1d"
+    ],
+    "time_options": [
+      "5m",
+      "15m",
+      "1h",
+      "6h",
+      "12h",
+      "24h",
+      "2d",
+      "7d",
+      "30d"
+    ]
+  },
+  "timezone": "",
+  "title": "Prometheus-Cluster",
+  "version": 11
+}
+
+PAYLOAD_NODE:
+{
+  "__inputs": [
+    {
+      "name": "prometheus",
+      "label": "prometheus_node",
+      "description": "",
+      "type": "datasource",
+      "pluginId": "prometheus",
+      "pluginName": "Prometheus"
+    }
+  ],
+  "__requires": [
+    {
+      "type": "grafana",
+      "id": "grafana",
+      "name": "Grafana",
+      "version": "4.4.3"
+    },
+    {
+      "type": "panel",
+      "id": "graph",
+      "name": "Graph",
+      "version": ""
+    },
+    {
+      "type": "datasource",
+      "id": "prometheus",
+      "name": "Prometheus",
+      "version": "1.0.0"
+    }
+  ],
+  "annotations": {
+    "list": []
+  },
+  "editable": true,
+  "gnetId": null,
+  "graphTooltip": 0,
+  "hideControls": false,
+  "id": null,
+  "links": [],
+  "rows": [
+    {
+      "collapse": false,
+      "height": "250px",
+      "panels": [
+        {
+          "aliasColors": {},
+          "bars": false,
+          "dashLength": 10,
+          "dashes": false,
+          "datasource": "prometheus",
+          "decimals": 3,
+          "fill": 1,
+          "id": 1,
+          "legend": {
+            "avg": false,
+            "current": false,
+            "max": false,
+            "min": false,
+            "show": true,
+            "total": false,
+            "values": false
+          },
+          "lines": true,
+          "linewidth": 1,
+          "links": [],
+          "minSpan": 3,
+          "nullPointMode": "connected",
+          "percentage": false,
+          "pointradius": 5,
+          "points": false,
+          "renderer": "flot",
+          "seriesOverrides": [],
+          "spaceLength": 10,
+          "span": 3,
+          "stack": false,
+          "steppedLine": false,
+          "targets": [
+            {
+              "expr": "avg (irate(node_cpu{mode='system',job=\"{{hostname}}\"}[5m])*100)",
+              "format": "time_series",
+              "hide": false,
+              "interval": "10s",
+              "intervalFactor": 1,
+              "legendFormat": "system",
+              "refId": "A",
+              "step": 30
+            },
+            {
+              "expr": "avg (irate(node_cpu{mode='user',job=\"{{hostname}}\"}[5m])*100)",
+              "format": "time_series",
+              "intervalFactor": 1,
+              "legendFormat": "user",
+              "refId": "B",
+              "step": 30
+            },
+            {
+              "expr": "avg (irate(node_cpu{mode='nice',job=\"{{hostname}}\"}[5m])*100)",
+              "format": "time_series",
+              "intervalFactor": 1,
+              "legendFormat": "nice",
+              "refId": "C",
+              "step": 30
+            },
+            {
+              "expr": "avg (irate(node_cpu{mode='iowait',job=\"{{hostname}}\"}[5m])*100)",
+              "format": "time_series",
+              "intervalFactor": 1,
+              "legendFormat": "iowait",
+              "refId": "D",
+              "step": 30
+            },
+            {
+              "expr": "avg (irate(node_cpu{mode='irq',job=\"{{hostname}}\"}[5m])*100)",
+              "format": "time_series",
+              "intervalFactor": 1,
+              "legendFormat": "irq",
+              "refId": "E",
+              "step": 30
+            },
+            {
+              "expr": "avg (irate(node_cpu{mode='softirq',job=\"{{hostname}}\"}[5m])*100)",
+              "format": "time_series",
+              "intervalFactor": 1,
+              "legendFormat": "softirq",
+              "refId": "F",
+              "step": 30
+            }
+          ],
+          "thresholds": [],
+          "timeFrom": null,
+          "timeShift": null,
+          "title": "{{hostname}}-cpu",
+          "tooltip": {
+            "shared": true,
+            "sort": 0,
+            "value_type": "individual"
+          },
+          "type": "graph",
+          "xaxis": {
+            "buckets": null,
+            "mode": "time",
+            "name": null,
+            "show": true,
+            "values": []
+          },
+          "yaxes": [
+            {
+              "format": "percent",
+              "label": "",
+              "logBase": 1,
+              "max": "100",
+              "min": "0",
+              "show": true
+            },
+            {
+              "format": "short",
+              "label": null,
+              "logBase": 1,
+              "max": null,
+              "min": null,
+              "show": true
+            }
+          ]
+        }
+      ],
+      "repeat": null,
+      "repeatIteration": null,
+      "repeatRowId": null,
+      "showTitle": false,
+      "title": "cpu",
+      "titleSize": "h6"
+    },
+    {
+      "collapse": false,
+      "height": 250,
+      "panels": [
+        {
+          "aliasColors": {
+            "in": "#EAB839",
+            "out": "#7EB26D"
+          },
+          "bars": false,
+          "dashLength": 10,
+          "dashes": false,
+          "datasource": "prometheus",
+          "decimals": 2,
+          "fill": 1,
+          "id": 3,
+          "legend": {
+            "avg": false,
+            "current": false,
+            "max": false,
+            "min": false,
+            "show": true,
+            "total": false,
+            "values": false
+          },
+          "lines": true,
+          "linewidth": 1,
+          "links": [],
+          "minSpan": 3,
+          "nullPointMode": "connected",
+          "percentage": false,
+          "pointradius": 5,
+          "points": false,
+          "renderer": "flot",
+          "seriesOverrides": [],
+          "spaceLength": 10,
+          "span": 3,
+          "stack": false,
+          "steppedLine": false,
+          "targets": [
+            {
+              "expr": "irate(node_network_receive_bytes{device=~'bond1',job='{{hostname}}'}[5m])",
+              "format": "time_series",
+              "intervalFactor": 1,
+              "legendFormat": "in",
+              "refId": "A",
+              "step": 30
+            },
+            {
+              "expr": "irate(node_network_transmit_bytes{device=~'bond1',job='{{hostname}}'}[5m])",
+              "format": "time_series",
+              "intervalFactor": 1,
+              "legendFormat": "out",
+              "refId": "B",
+              "step": 30
+            }
+          ],
+          "thresholds": [],
+          "timeFrom": null,
+          "timeShift": null,
+          "title": "{{hostname}}-service-network",
+          "tooltip": {
+            "shared": true,
+            "sort": 0,
+            "value_type": "individual"
+          },
+          "type": "graph",
+          "xaxis": {
+            "buckets": null,
+            "mode": "time",
+            "name": null,
+            "show": true,
+            "values": []
+          },
+          "yaxes": [
+            {
+              "format": "decbytes",
+              "label": "",
+              "logBase": 1,
+              "max": null,
+              "min": null,
+              "show": true
+            },
+            {
+              "format": "short",
+              "label": null,
+              "logBase": 1,
+              "max": null,
+              "min": null,
+              "show": true
+            }
+          ]
+        }
+      ],
+      "repeat": null,
+      "repeatIteration": null,
+      "repeatRowId": null,
+      "showTitle": false,
+      "title": "service-network",
+      "titleSize": "h6"
+    },
+    {
+      "collapse": false,
+      "height": 250,
+      "panels": [
+        {
+          "aliasColors": {},
+          "bars": false,
+          "dashLength": 10,
+          "dashes": false,
+          "datasource": "prometheus",
+          "fill": 1,
+          "id": 5,
+          "legend": {
+            "avg": false,
+            "current": false,
+            "max": false,
+            "min": false,
+            "show": true,
+            "total": false,
+            "values": false
+          },
+          "lines": true,
+          "linewidth": 1,
+          "links": [],
+          "minSpan": 3,
+          "nullPointMode": "connected",
+          "percentage": false,
+          "pointradius": 5,
+          "points": false,
+          "renderer": "flot",
+          "seriesOverrides": [],
+          "spaceLength": 10,
+          "span": 3,
+          "stack": false,
+          "steppedLine": false,
+          "targets": [
+            {
+              "expr": "irate(node_disk_sectors_written{device='sdb',job='{{hostname}}'}[5m])*2*100",
+              "format": "time_series",
+              "intervalFactor": 1,
+              "legendFormat": "write",
+              "refId": "A",
+              "step": 30
+            },
+            {
+              "expr": "irate(node_disk_sectors_read{device='sdb',job='{{hostname}}'}[5m])*2*100",
+              "format": "time_series",
+              "intervalFactor": 1,
+              "legendFormat": "read",
+              "refId": "B",
+              "step": 30
+            }
+          ],
+          "thresholds": [],
+          "timeFrom": null,
+          "timeShift": null,
+          "title": "{{hostname}}-disk-io",
+          "tooltip": {
+            "shared": true,
+            "sort": 0,
+            "value_type": "individual"
+          },
+          "type": "graph",
+          "xaxis": {
+            "buckets": null,
+            "mode": "time",
+            "name": null,
+            "show": true,
+            "values": []
+          },
+          "yaxes": [
+            {
+              "format": "decbytes",
+              "label": null,
+              "logBase": 1,
+              "max": null,
+              "min": null,
+              "show": true
+            },
+            {
+              "format": "short",
+              "label": null,
+              "logBase": 1,
+              "max": null,
+              "min": null,
+              "show": true
+            }
+          ]
+        }
+      ],
+      "repeat": null,
+      "repeatIteration": null,
+      "repeatRowId": null,
+      "showTitle": false,
+      "title": "disk-io",
+      "titleSize": "h6"
+    }
+  ],
+  "schemaVersion": 14,
+  "style": "light",
+  "tags": [],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "timepicker": {
+    "refresh_intervals": [
+      "5s",
+      "10s",
+      "30s",
+      "1m",
+      "5m",
+      "15m",
+      "30m",
+      "1h",
+      "2h",
+      "1d"
+    ],
+    "time_options": [
+      "5m",
+      "15m",
+      "1h",
+      "6h",
+      "12h",
+      "24h",
+      "2d",
+      "7d",
+      "30d"
+    ]
+  },
+  "timezone": "",
+  "title": "Prometheus-Node",
+  "version": 4
+}

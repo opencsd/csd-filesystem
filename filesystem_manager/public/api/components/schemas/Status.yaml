@@ -1,0 +1,30 @@
+description: API status schema
+type: object
+properties:
+  category:
+    type: string
+  code:
+    type: string
+  details:
+    anyOf:
+      - type: string
+      - type: object
+      - type: array
+      - nullable: true
+  level:
+    type: string
+  message:
+    type: string
+    nullable: true
+  msgargs:
+    type: array
+    items:
+      anyOf:
+        - type: string
+        - nullable: true
+  scope:
+    type: string
+  time:
+    type: integer
+  type:
+    type: string

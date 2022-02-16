@@ -1,0 +1,52 @@
+#!/bin/bash
+#
+# File Name	: ans
+# Description	: AnyStor-E ansible-ish tool
+# Maintainer	: hgichon & alghost
+# Version	: 1.0
+# ChangeLog	: 
+#	Sat Jun 25 17:49:14 KST 2016
+
+nodes=$(grep "${HOSTNAME%%-*}" /etc/hosts \
+        | grep -- "-m" \
+        | sed -e 's/^.\+\s\+\([^\s]\+\)/\1/g;' \
+        | sort)
+cmd=$@
+
+### Copy data ###
+if [ "$1" == "-c" ]; then
+    for node in $nodes
+    do
+        echo "============ Copy File To : $node ================"
+        scp -r $2 $node:/$2
+    done
+### Add SSH-Key ###
+elif [ "$1" == "-a" ]; then
+    for node in $nodes
+    do
+        echo "============ Add SSH-Key : $node ================"
+        ssh-copy-id root@$node
+    done
+### Add SSH-Key automatically ###
+elif [ "$1" == "-s" ]; then
+    for node in $nodes
+    do
+        echo "============ Add SSH-Key Auto. : $node ================"
+        ssh-keyscan $node >> ~/.ssh/known_hosts
+        sshpass -p $2 ssh-copy-id root@$node
+    done
+### Excute ping  ###
+elif [ "$1" == "ping" ]; then
+    for node in $nodes
+    do
+        echo "============= Ping To : $node ================"
+        ping -c 1 -w 1 $node
+    done
+### Excute CMD  ###
+else
+    for node in $nodes
+    do
+        echo "============= Execute CMD : $node ================"
+        ssh $node "$cmd"
+    done
+fi

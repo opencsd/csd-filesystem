@@ -1,0 +1,35 @@
+/var/log/gms.log {
+    daily
+    size 50M
+    rotate 30
+    copytruncate
+    missingok
+    notifempty
+    compress
+    dateext
+    create 0600 root root
+}
+
+/var/log/gms/procedure_gms.log {
+    weekly
+    size 50M
+    rotate 12
+    copytruncate
+    missingok
+    notifempty
+    compress
+    dateext
+    create 0600 root root
+}
+
+/var/log/gms/jipper.log {
+    weekly
+    size 50M
+    rotate 12
+    copytruncate
+    missingok
+    notifempty
+    compress
+    dateext
+    create 0600 root root
+}

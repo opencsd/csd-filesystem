@@ -1,0 +1,8 @@
+#!/bin/sh
+log "INFO" "[CLUSTER] Migration for 2.0.3.1 -> 2.0.3.2"
+
+log "INFO" "[CLUSTER] removing useless ntp configuration files..."
+
+if [ -e /mnt/private/GMS/time ]; then
+    rm -rf /mnt/private/GMS/time
+fi

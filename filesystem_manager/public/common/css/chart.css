@@ -1,0 +1,68 @@
+/* 차트내의 글자 포맷 */
+.chart {
+	font: 11px "Open Sans", "lucida grande", "lucida sans unicode", Helvetica, Arial, sans-serif;
+}
+
+/* x축 y축 스타일 */
+.axis path,.axis line {
+	fill: none;
+	stroke: #d4d4d4;
+	shape-rendering: crispEdges;
+}
+.axis text{
+	fill:#333;
+	font-size: 11px;
+	font-family: "Open Sans","맑은고딕","Malgun Gothic","돋움","dotum", sans-serif ,"verdana" !important;
+	line-height: 16px;
+	letter-spacing: -0.7px;
+}
+
+/* 그리드 색 */
+.y .tick line ,.x .tick line{
+	stroke: #d4d4d4;
+    opacity: 0.4 !important;
+}
+/* line chart 스타일 */
+.line {
+	fill: none;
+	stroke-width: 1.7px;
+}
+
+/* tool tip 스타일 */
+.overlay {
+  fill: none;
+  pointer-events: all;
+}
+/* tooltip line*/
+.tooltipLine{
+	stroke:#95a4b8;
+	stroke-width: 1px;
+	opacity: 0;
+}
+.tooltipPerLine circle{
+	stroke-width: 1px;
+	opacity: 0;
+}
+/**********
+* tooltip info */
+.infoBox {
+	position:absolute;
+	top:0px;
+	left:0px;
+	z-index:9999;
+	border:1px solid #95a4b8;
+	background:rgba(255, 255, 255,0.8);
+	padding:10px 10px;
+	border-radius:2px;
+	font-size:12px;
+	line-height:16px;
+	color:#878787;
+}
+.infoBox div.label{font-weight:bold}
+.infoBox ul{ margin: 5px 0 0 10px;  padding: 0;}
+.infoBox ul li{min-height:16px;}
+.infoBox ul li span {padding-left:2px;}
+.barValue{fill:#fff;}
+/**********
+*  Legend */
+.legend text{fill:#bbb}

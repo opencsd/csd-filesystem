@@ -1,0 +1,616 @@
+#!/usr/bin/perl -I/usr/gms/libgms -I/usr/gms/bin
+
+use v5.14;
+
+use strict;
+use warnings;
+use utf8;
+
+our $AUTHORITY = 'cpan:gluesys';
+
+use GMS::Common::OptArgs;
+use GMS::Common::Command qw/:all/;
+use GMS::Common::Logger;
+
+require ctl_lib::Utils;
+
+#---------------------------------------------------------------------------
+#   Constants
+#---------------------------------------------------------------------------
+use constant {
+    DEF_LOGFILE    => '/var/log/gms/accountctl.log',
+    GMS_API_SERVER => '127.0.0.1:80',
+    API_TIMEOUT    => '60',
+};
+
+#---------------------------------------------------------------------------
+#   Global Variables
+#---------------------------------------------------------------------------
+our $PARSER = undef;
+our %OPTS   = (
+    DEBUG   => 0,
+    LOGFILE => DEF_LOGFILE,
+);
+
+#---------------------------------------------------------------------------
+#   Main
+#---------------------------------------------------------------------------
+$PARSER = GMS::Common::OptArgs->new(
+    commands => [
+
+        # USER CMD
+        {
+            path     => 'user',
+            desc     => 'control user account',
+            callback => sub { $PARSER->print_help('user'); },
+        },
+        {
+            path     => 'user add',
+            desc     => 'user add cmd',
+            callback => sub { exit user_add(); },
+        },
+        {
+            path     => 'user del',
+            desc     => 'user del cmd',
+            callback => sub { exit user_del(); },
+        },
+        {
+            path     => 'user passwd',
+            desc     => 'user passwd cmd',
+            callback => sub { exit user_passwd(); },
+        },
+        {
+            path     => 'user check',
+            desc     => 'user check cmd',
+            callback => sub { exit user_check(); },
+        },
+        {
+            path     => 'user list',
+            desc     => 'user listing cmd',
+            callback => sub { exit user_list(); },
+        },
+
+        # GROUP CMD
+        {
+            path     => 'group',
+            desc     => 'control group account',
+            callback => sub { $PARSER->print_help('group'); },
+        },
+        {
+            path     => 'group add',
+            desc     => 'add a group cmd',
+            callback => sub { exit group_add(); },
+        },
+        {
+            path     => 'group del',
+            desc     => 'delete a group cmd',
+            callback => sub { exit group_del(); },
+        },
+        {
+            path     => 'group add_mem',
+            desc     => 'add group member cmd',
+            callback => sub { exit groupmem_add(); },
+        },
+        {
+            path     => 'group del_mem',
+            desc     => 'delete group member cmd',
+            callback => sub { exit groupmem_del(); },
+        },
+        {
+            path     => 'group add_sub',
+            desc     => 'add a subgroup to a group cmd',
+            callback => sub { exit groupmem_subadd(); },
+        },
+        {
+            path     => 'group del_sub',
+            desc     => 'delete a subgroup from a group cmd',
+            callback => sub { exit groupmem_subdel(); },
+        },
+        {
+            path     => 'group check',
+            desc     => 'group check cmd',
+            callback => sub { exit group_check(); },
+        },
+        {
+            path     => 'group list',
+            desc     => 'group listing cmd',
+            callback => sub { exit group_list(); },
+        },
+    ],
+    options => [
+        {
+            pinned   => 1,
+            short    => 'L',
+            long     => 'location',
+            desc     => 'LOCAL|ADS|LDAP defualt:LOCAL',
+            valdesc  => '<LOCAL|ADS|LDAP>',
+            callback => sub { $OPTS{LOCATION} = shift; },
+        },
+        {
+            pinned   => 1,
+            short    => 'u',
+            long     => 'user',
+            desc     => 'user name',
+            valdesc  => '<STRING>',
+            callback => sub { $OPTS{USER_NAME} = shift; },
+        },
+        {
+            pinned   => 1,
+            short    => 'g',
+            long     => 'group',
+            desc     => 'user initail login group, default: users',
+            valdesc  => '<STRING>',
+            callback => sub { $OPTS{GROUP_NAME} = shift; },
+        },
+        {
+            pinned   => 1,
+            short    => 'p',
+            long     => 'passwd',
+            desc     => 'user passwd',
+            valdesc  => '<STRING>',
+            callback => sub { $OPTS{PASSWORD} = shift; },
+        },
+        {
+            pinned   => 1,
+            short    => 'd',
+            long     => 'home-dir',
+            desc     => 'user home directroy',
+            valdesc  => '<PATH>',
+            callback => sub { $OPTS{HOME_DIR} = shift; },
+        },
+        {
+            pinned   => 1,
+            short    => 'm',
+            long     => 'create-home',
+            desc     => 'create user home directory , default: do not create',
+            callback => sub { $OPTS{CREATE_HOME} = 'create_home'; },
+        },
+        {
+            pinned   => 1,
+            short    => 'S',
+            long     => 'subgroup',
+            desc     => 'sub group name for groupmem cmd',
+            valdesc  => '<STRING>',
+            callback => sub { $OPTS{SUB_GROUP} = shift; },
+        },
+    ],
+    help_cmd  => 1,
+    help_lopt => 1,
+);
+
+setup_log();
+
+$PARSER->parse(args => \@ARGV);
+
+release_sig_warn();
+
+exit 0;
+
+#---------------------------------------------------------------------------
+#   Functions
+#---------------------------------------------------------------------------
+
+# PD2ASE3 port Issue
+# TODO : there is no comment/shell options
+#
+
+sub print_help_user
+{
+    my ($res) = @_;
+
+    my $EXAMPLE_USER
+        = "\nEXAMPLES\n"
+        . "    accountctl user add -u: -p: [-m:] [-g:] [-L:]\n"
+        . "    accountctl user del -u:\n"
+        . "    accountctl user list\n"
+        . "    accountctl user check -u: \n"
+        . "    accountctl user passwd -u: -p:\n";
+
+    $PARSER->print_help('user', $EXAMPLE_USER, $res // 0);
+}
+
+sub print_help_group
+{
+    my ($res) = @_;
+
+    my $EXAMPLE_GROUP
+        = "\nEXAMPLES\n"
+        . "    accountctl group add -g:\n"
+        . "    accountctl group del -g:\n"
+        . "    accountctl group list\n"
+        . "    accountctl group check -g:\n"
+        . "    accountctl group add_mem -g: -S:\n"
+        . "    accountctl group add_sub -g: -S:\n"
+        . "    accountctl group del_mem -g: -S:\n"
+        . "    accountctl group del_sub -g: -S:\n";
+
+    $PARSER->print_help('group', $EXAMPLE_GROUP, $res // 0);
+}
+
+sub user_add
+{
+    if (!defined $OPTS{USER_NAME})
+    {
+        print_log(LOG_ERR, "check pararm\n");
+        print_help_user(1);
+        return 1;
+    }
+    my %arguments = (Location => $OPTS{LOCATION} // 'LOCAL');
+    my %entity    = (
+        User_Name     => $OPTS{USER_NAME},
+        User_Password => $OPTS{PASSWORD}    // $OPTS{USER_NAME},
+        User_HomeDir  => $OPTS{HOME_DIR}    // '',
+        Create_Home   => $OPTS{CREATE_HOME} // undef,
+    );
+
+    if (defined $OPTS{GROUP_NAME})
+    {
+        $entity{User_Groups} = [$OPTS{GROUP_NAME}];
+    }
+    else
+    {
+        $OPTS{GROUP_NAME} = '';
+    }
+
+    print_log(LOG_INFO,
+        "create user : "
+            . "$entity{User_Name}:$entity{User_Password}:$entity{User_HomeDir}:"
+            . "$OPTS{GROUP_NAME}:$entity{Create_Home}",
+        1
+    );
+
+    my $res = __call_rest_api('cluster/account/user/create',
+        {argument => \%arguments, entity => \%entity}, API_TIMEOUT);
+
+    return 1 if !defined $res;
+
+    return 0;
+}
+
+sub user_del
+{
+    if (!defined $OPTS{USER_NAME})
+    {
+        print_log(LOG_ERR, "check pararm\n");
+        print_help_user(1);
+        return 1;
+    }
+    my %arguments = (Location   => $OPTS{LOCATION} // 'LOCAL');
+    my %entity    = (User_Names => [$OPTS{USER_NAME}],);
+
+    print_log(LOG_INFO, "delete user: $OPTS{USER_NAME}", 1);
+
+    my $res = __call_rest_api('cluster/account/user/delete',
+        {argument => \%arguments, entity => \%entity}, API_TIMEOUT);
+
+    # TODO : Group member is not deleted currently
+    #
+    return 1 if !defined $res;
+
+    return 0;
+}
+
+sub user_passwd
+{
+    if (!defined $OPTS{USER_NAME} || !defined $OPTS{PASSWORD})
+    {
+        print_log(LOG_ERR, "check pararm\n");
+        print_help_user(1);
+        return 1;
+    }
+    my %arguments = (Location => $OPTS{LOCATION} // 'LOCAL');
+    my %entity    = (
+        User_Name     => $OPTS{USER_NAME},
+        User_Password => $OPTS{PASSWORD},
+    );
+
+    print_log(LOG_INFO, "password update: $OPTS{USER_NAME}", 1);
+
+    my $res = __call_rest_api('cluster/account/user/update',
+        {argument => \%arguments, entity => \%entity}, API_TIMEOUT);
+
+    return 1 if !defined $res;
+
+    return 0;
+}
+
+sub user_check
+{
+    if (!defined $OPTS{USER_NAME})
+    {
+        print_log(LOG_ERR, "check pararm\n");
+        print_help_user(1);
+        return 1;
+    }
+    my %arguments = (Location  => $OPTS{LOCATION} // 'LOCAL');
+    my %entity    = (User_Name => $OPTS{USER_NAME},);
+
+    print_log(LOG_INFO, "check user: $OPTS{USER_NAME}", 1);
+
+    my $res = __call_rest_api('cluster/account/user/info',
+        {argument => \%arguments, entity => \%entity}, API_TIMEOUT);
+
+    return 1 if !defined $res;
+
+    return 0;
+}
+
+sub user_list
+{
+    my %arguments = (Location => $OPTS{LOCATION} // 'LOCAL');
+    my %entity    = ();
+    print_log(LOG_INFO, "listing users ", 1);
+
+    my $res
+        = __call_rest_api('cluster/account/user/list',
+        {argument => \%arguments, entity => \%entity},
+        API_TIMEOUT, 1);
+
+    return 1 if !defined $res;
+
+    my $count = 0;
+    my $list;
+    my $home;
+    $list = sprintf "%-8s %-10s %-6s %-15s\n",
+        'Location', 'UserName',
+        'UserID',   'HomeDir (Yes/No)';
+    print $list;
+    foreach my $u (sort { $a->{User_ID} <=> $b->{User_ID} } @{$res->{entity}})
+    {
+        $count++;
+        $home = -d $u->{User_HomeDir} ? 'Yes' : 'No';
+        $list = sprintf "%-8s %-10s %-6s %-15s\n",
+            $u->{User_Location}, $u->{User_Name},
+            $u->{User_ID},       $u->{User_HomeDir} . " ($home)";
+        print $list;
+    }
+    print "total $count user registerd\n";
+    return 0;
+}
+
+sub group_add
+{
+    if (!defined $OPTS{GROUP_NAME})
+    {
+        print_log(LOG_ERR, "check pararm\n");
+        print_help_group(1);
+        return 1;
+    }
+
+    my %arguments = (Location   => $OPTS{LOCATION} // 'LOCAL');
+    my %entity    = (Group_Name => $OPTS{GROUP_NAME},);
+
+    print_log(LOG_INFO, "add group: $OPTS{GROUP_NAME}", 1);
+
+    my $res = __call_rest_api('cluster/account/group/create',
+        {argument => \%arguments, entity => \%entity}, API_TIMEOUT);
+
+    return 1 if !defined $res;
+
+    return 0;
+}
+
+sub group_del
+{
+    if (!defined $OPTS{GROUP_NAME})
+    {
+        print_log(LOG_ERR, "check pararm\n");
+        print_help_group(1);
+        return 1;
+    }
+
+    my %arguments = (Location    => $OPTS{LOCATION} // 'LOCAL');
+    my %entity    = (Group_Names => [$OPTS{GROUP_NAME}],);
+
+    print_log(LOG_INFO, "delete group: $OPTS{GROUP_NAME}", 1);
+
+    my $res = __call_rest_api('cluster/account/group/delete',
+        {argument => \%arguments, entity => \%entity}, API_TIMEOUT);
+
+    return 1 if !defined $res;
+
+    return 0;
+}
+
+sub group_check
+{
+    if (!defined $OPTS{GROUP_NAME})
+    {
+        print_log(LOG_ERR, "check pararm\n");
+        print_help_group(1);
+        return 1;
+    }
+
+    my %arguments = (Location   => $OPTS{LOCATION} // 'LOCAL');
+    my %entity    = (Group_Name => $OPTS{GROUP_NAME},);
+
+    print_log(LOG_INFO, "check group: $OPTS{GROUP_NAME}", 1);
+
+    my $res = __call_rest_api('cluster/account/group/info',
+        {argument => \%arguments, entity => \%entity}, API_TIMEOUT);
+
+    return 1 if !defined $res;
+
+    return 0;
+}
+
+sub group_list
+{
+    my %arguments = (Location => $OPTS{LOCATION} // 'LOCAL');
+    my %entity    = ();
+
+    print_log(LOG_INFO, "listing groups", 1);
+
+    my $res
+        = __call_rest_api('cluster/account/group/list',
+        {argument => \%arguments, entity => \%entity},
+        API_TIMEOUT, 1);
+
+    return 1 if !defined $res;
+
+    my $count = 0;
+    my $list;
+    $list = sprintf "%-10s %-12hs %-8s %-20s\n",
+        'Location', 'GroupName', 'GroupID', 'User Lists';
+    print $list;
+    foreach
+        my $u (sort { $a->{Group_ID} <=> $b->{Group_ID} } @{$res->{entity}})
+    {
+        $count++;
+        %entity = (Group_Name => $u->{Group_Name});
+
+        my $user_res
+            = __call_rest_api('cluster/account/group/info',
+            {argument => \%arguments, entity => \%entity},
+            API_TIMEOUT, '1');
+
+        $list = sprintf "%-10s %-12s %-8s %-20s\n",
+            $u->{Group_Location}, $u->{Group_Name}, $u->{Group_ID},
+            join(" ", @{$user_res->{entity}{Group_Members}});
+        print $list;
+    }
+    print "total $count group registerd\n";
+    return 0;
+}
+
+sub groupmem_add
+{
+    if (!defined $OPTS{USER_NAME} || !defined $OPTS{GROUP_NAME})
+    {
+        print_log(LOG_ERR, "check pararm\n");
+        print_help_group(1);
+        return 1;
+    }
+
+    my %arguments = (Location => $OPTS{LOCATION} // 'LOCAL');
+    my %userinfo  = (
+        User_Name   => $OPTS{USER_NAME},
+        User_Member => 'TRUE'
+    );
+    my %entity = (
+        Group_Name    => $OPTS{GROUP_NAME},
+        Group_Members => [\%userinfo]
+    );
+
+    print_log(LOG_INFO,
+        "groupmem add: $OPTS{USER_NAME} => $OPTS{GROUP_NAME}", 1);
+
+    my $res = __call_rest_api('cluster/account/group/update',
+        {argument => \%arguments, entity => \%entity}, API_TIMEOUT);
+
+    return 1 if !defined $res;
+
+    return 0;
+}
+
+sub groupmem_del
+{
+    if (!defined $OPTS{USER_NAME} || !defined $OPTS{GROUP_NAME})
+    {
+        print_log(LOG_ERR, "check pararm\n");
+        print_help_group(1);
+        return 1;
+    }
+
+    my %arguments = (Location => $OPTS{LOCATION} // 'LOCAL');
+    my %userinfo  = (
+        User_Name   => $OPTS{USER_NAME},
+        User_Member => 'FALSE'
+    );
+    my %entity = (
+        Group_Name    => $OPTS{GROUP_NAME},
+        Group_Members => [\%userinfo]
+    );
+
+    print_log(LOG_INFO,
+        "groupmem del: $OPTS{USER_NAME} => $OPTS{GROUP_NAME}", 1);
+
+    my $res = __call_rest_api('cluster/account/group/update',
+        {argument => \%arguments, entity => \%entity}, API_TIMEOUT);
+
+    return 1 if !defined $res;
+
+    return 0;
+}
+
+sub groupmem_subadd
+{
+    if (!defined $OPTS{GROUP_NAME} || !defined $OPTS{SUB_GROUP})
+    {
+        print_log(LOG_ERR, "check pararm\n");
+        print_help_group(1);
+        return 1;
+    }
+
+    my %arguments = (Location => $OPTS{LOCATION} // 'LOCAL');
+    my %groupinfo = (
+        User_Name   => '@' . $OPTS{SUB_GROUP},
+        User_Member => 'TRUE'
+    );
+    my %entity = (
+        Group_Name    => $OPTS{GROUP_NAME},
+        Group_Members => [\%groupinfo]
+    );
+
+    print_log(LOG_INFO,
+        "groupmem add: $OPTS{SUB_GROUP} => $OPTS{GROUP_NAME}", 1);
+
+    my $res = __call_rest_api('cluster/account/group/update',
+        {argument => \%arguments, entity => \%entity}, API_TIMEOUT);
+
+    return 1 if !defined $res;
+
+    return 0;
+}
+
+sub groupmem_subdel
+{
+    if (!defined $OPTS{GROUP_NAME} || !defined $OPTS{SUB_GROUP})
+    {
+        print_log(LOG_ERR, "check pararm\n");
+        print_help_group(1);
+        return 1;
+    }
+
+    my %arguments = (Location => $OPTS{LOCATION} // 'LOCAL');
+    my %groupinfo = (
+        User_Name   => '@' . $OPTS{SUB_GROUP},
+        User_Member => 'FALSE'
+    );
+    my %entity = (
+        Group_Name    => $OPTS{GROUP_NAME},
+        Group_Members => [\%groupinfo]
+    );
+
+    print_log(LOG_INFO,
+        "groupmem del: $OPTS{SUB_GROUP} => $OPTS{GROUP_NAME}", 1);
+
+    my $res = __call_rest_api('cluster/account/group/update',
+        {argument => \%arguments, entity => \%entity}, API_TIMEOUT);
+
+    return 1 if !defined $res;
+
+    return 0;
+}
+
+__END__
+
+=encoding utf8
+
+=head1 NAME
+
+accountctl - 사용자/그룹/서브그룹 관리 CLI
+
+=head1 SYNOPSIS
+
+=head1 DESCRIPTION
+
+=head1 COPYRIGHT AND LICENSE
+
+Copyright 2015-2021. Gluesys Co., Ltd. All rights reserved.
+
+=head1 SEE ALSO
+
+sharectl
+
+=cut

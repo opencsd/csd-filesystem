@@ -1,0 +1,23 @@
+description: Current status of this GMS cluster
+content:
+  application/json:
+    schema:
+      allOf:
+        - $ref: '#/components/schemas/DefaultResponse'
+        - type: object
+          properties:
+            entity:
+              type: object
+              properties:
+                Name:
+                  anyOf:
+                    - nullable: true
+                    - type: string
+                Version:
+                  type: string
+                Status:
+                  type: string
+                Reason:
+                  type: string
+                Msg:
+                  type: string

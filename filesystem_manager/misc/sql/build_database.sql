@@ -1,0 +1,12 @@
+CREATE USER 'gluesys'@'localhost' IDENTIFIED BY 'gluesys!!';
+CREATE USER 'gluesys'@'%' IDENTIFIED BY 'gluesys!!';
+GRANT ALL PRIVILEGES ON *.* TO 'root'@'%' IDENTIFIED BY 'gluesys!!' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON gms.* TO 'gluesys'@'%' IDENTIFIED BY 'gluesys!!' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON gms.* TO 'gluesys'@'localhost' IDENTIFIED BY 'gluesys!!' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON girasole.* TO 'gluesys'@'%' IDENTIFIED BY 'gluesys!!' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON girasole.* TO 'gluesys'@'localhost' IDENTIFIED BY 'gluesys!!' WITH GRANT OPTION;
+DELETE FROM mysql.user WHERE mysql.user.User='';
+DELETE FROM mysql.user WHERE UPPER(Host) LIKE UPPER((SELECT @@hostname));
+FLUSH PRIVILEGES;
+CREATE DATABASE gms;
+CREATE DATABASE girasole;

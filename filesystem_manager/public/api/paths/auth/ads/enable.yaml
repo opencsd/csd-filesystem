@@ -1,0 +1,17 @@
+post:
+  x-mojo-to: 'Auth::ADS#enable'
+  operationId: auth_ads_enable
+  tags:
+    - auth
+  requestBody:
+    required: true
+    description: request
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ADSConfig'
+  responses:
+    204:
+      description: ADS authentication enabled successfully.
+    401:
+      $ref: '#/components/responses/Unauthorized'

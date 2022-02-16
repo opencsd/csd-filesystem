@@ -1,0 +1,637 @@
+#!/bin/sh
+#===========================================================================
+#          FILE: rpm_deploy_actions_handler
+#         USAGE: handling rpm_deploy_actions interface
+#   DESCRIPTION: 
+#       OPTIONS: ---
+#       VERSION: 1.0
+#         NOTES: ---
+#        AUTHOR: Geun-Yeong Bak <gybak@gluesys.com>
+#                Ji-Hyeon Gim <potatogim@gluesys.com
+#     COPYRIGHT: Copyright 2015-2021. Gluesys Co., Ltd.
+#                All rights reserved.
+#          DATE: 
+#===========================================================================
+
+#===========================================================================
+# Global Variable
+#===========================================================================
+
+#####
+#    Paths
+###
+ACTION=$1    #do or undo
+ACTS_DIR=${2:-"/usr/gms/misc/deploy/rpm_deploy_actions/"}
+BACK_DIR=${3:-"/var/lib/gms/deploy_back"}
+
+[ ! -d $BACK_DIR ] && mkdir -p $BACK_DIR
+
+[ -f '/var/lib/gms/functions' ] && . /var/lib/gms/functions
+
+#####
+#    Action arrays
+###
+declare -a mod_update_acts
+declare -a add_update_acts
+declare -a del_update_acts
+declare -a copy_acts
+declare -a link_acts
+declare -a input_cmds
+declare -a revert_cmds
+
+#===========================================================================
+# Functions
+#===========================================================================
+
+#####
+#    Functions For String Handling
+###
+
+function encoding_special()
+{
+    eval local raw_phrase=\$$1
+    local encorded=`sed -e " \
+        s/>/-rght-/g ; \
+        s/</-rft-/g ; \
+        s/|/-bar-/g ; \
+        s/\t/-tab-/g ; \
+        s/ /-spc-/g ; \
+        s/\"/-dq-/g ; \
+        s/'/-sq-/g ; \
+        s/;/-scol-/g ; \
+    " << EOF
+$raw_phrase
+EOF`
+    eval $1='$encorded'
+}
+
+function decoding_special()
+{
+    eval local raw_phrase=\$$1
+    local decorded=`sed -e "\
+        s/-rght-/>/g ; \
+        s/-rft-/</g ; \
+        s/-bar-/|/g ; \
+        s/-tab-/\t/g ; \
+        s/-spc-/ /g ; \
+        s/-dq-/\"/g ; \
+        s/-sq-/'/g ; \
+        s/-scol-/;/g ; \
+    " << EOF
+$raw_phrase
+EOF`
+    eval $1='$decorded'
+}
+
+function escape_handling()
+{
+    escape_slash $1
+    escape_large_braket $1
+    escape_dollar $1
+}
+
+function escape_slash()
+{
+    eval local with_escape=\$$1
+    local escape='\\'
+    local with_escape=`echo "$with_escape" | sed -e "s/\//$escape\//g"`
+    eval $1='$with_escape'
+}
+
+function escape_large_braket()
+{
+    eval local with_escape=\$$1
+    local escape='\\'
+    local with_escape=`echo "$with_escape" | sed -e "s/\[/$escape\[/g"`
+    local with_escape=`echo "$with_escape" | sed -e "s/\]/$escape\]/g"`
+    eval $1='$with_escape'
+}
+
+function escape_dollar()
+{
+    eval local with_escape=\$$1
+    local escape='\\'
+    local with_escape=`echo "$with_escape" | sed -e "s/'\$'/$escape\$/g"`
+    eval $1='$with_escape'
+}
+
+function pop_value()
+{
+    local container=$1
+
+    for(( i=2; i<="$#" ;i++ ))
+    do
+        eval local variable_name=\$$i
+        local popd_value=`echo $container | sed -e 's/:::.*//g'`
+        eval $variable_name='$popd_value'
+        local next_start=`expr index "$container" ':::'`
+        let next_start=next_start+2
+        local container=${container:$next_start}
+    done
+}
+
+#####
+#    Parse .act files and Push it to array
+###
+function make_array()
+{
+    # echo 'make arrays'
+    # Make @mod_update_acts, @add_update_acts, @del_update_acts
+    make_update_acts
+
+    # Make @copy_acts
+    make_copy_acts
+
+    # Make @link_acts
+    make_link_acts
+
+    # Make @input_cmds, @revert_cmds
+    make_cmds
+}
+
+function make_update_acts()
+{
+    local valid_act_cont=`cat $ACTS_DIR/file_updates.act | grep -v ^# | grep -v ^$ | \
+        sed -e " \
+        s#%GMSDIR#/usr/gms#g ; \
+        s#%GSMDIR#/usr/gsm#g ; \
+    "`
+
+    local mod_arr_maker=''
+    local add_arr_maker=''
+    local del_arr_maker=''
+
+    while read line
+    do
+        encoding_special line
+
+        if [[ $line =~ "mod:::" ]]; then
+            mod_arr_maker=`echo $line | sed -e 's/mod::://g'`
+            mod_update_acts+=( $mod_arr_maker )
+        elif [[ $line =~ "add:::" ]]; then
+            add_arr_maker=`echo $line | sed -e 's/add::://g'`
+            add_update_acts+=( $add_arr_maker )
+        elif [[ $line =~ "del:::" ]]; then
+            del_arr_maker=`echo $line | sed -e 's/del::://g'`
+            del_update_acts+=( $del_arr_maker )
+        fi
+    done << EOF
+$valid_act_cont
+EOF
+}
+
+function make_copy_acts()
+{
+    local valid_act_cont=`cat $ACTS_DIR/file_copies.act | grep -v ^# | grep -v ^$ | \
+        sed -e " \
+        s#%GMSDIR#/usr/gms#g ; \
+        s#%GSMDIR#/usr/gsm#g ; \
+    "`
+
+    copy_acts=( $valid_act_cont )
+}
+
+function make_link_acts()
+{
+    local valid_act_cont=`cat $ACTS_DIR/file_links.act | grep -v ^# | grep -v ^$ | \
+        sed -e " \
+        s#%GMSDIR#/usr/gms#g ; \
+        s#%GSMDIR#/usr/gsm#g ; \
+    "`
+
+    link_acts=( $valid_act_cont )
+}
+
+function make_cmds()
+{
+    local valid_act_cont=`cat $ACTS_DIR/commands.act | grep -v ^# | grep -v ^$ | \
+        sed -e " \
+        s#%GMSDIR#/usr/gms#g ; \
+        s#%GSMDIR#/usr/gsm#g ; \
+    "`
+
+    local input_cmd_maker=''
+    local revert_cmd_maker=''
+
+    while read line
+    do
+        encoding_special line
+        pop_value $line input_cmd revert_cmd
+        input_cmds=( ${input_cmds[@]} $input_cmd )
+        revert_cmds=( $revert_cmd ${revert_cmds[@]} )
+    done << EOF
+$valid_act_cont
+EOF
+}
+
+#####
+#    Do The Actions to The System
+###
+function do_actions()
+{
+    log "INFO" 'do actions'
+
+    # file updates
+    do_file_update
+
+    # copy
+    do_copy
+
+    # link
+    do_link
+
+    # commands
+    do_commands
+}
+
+function do_file_update()
+{
+    for each_item in ${mod_update_acts[@]}
+    do
+        pop_value $each_item target_file old_phrase new_phrase
+
+        decoding_special old_phrase
+        decoding_special new_phrase
+
+        old_phrase=`echo "$old_phrase" | sed -e "s/^'|'$//g"`
+
+        local real_phrases=`grep -r "$old_phrase" $target_file | \
+                            grep -Ev "^\s*#" | \
+                            grep -v "$new_phrase" | \
+                            sed -e 's/ /-spc-/g; s/\t/-tab-/g'`
+
+        if [ "x$real_phrases" = "x" ]; then
+            local add_arr_maker="$target_file:::$new_phrase"
+
+            encoding_special add_arr_maker
+
+            add_update_acts+=( $add_arr_maker )
+
+            decoding_special add_arr_maker
+
+            echo "add:::$add_arr_maker" >> $ACTS_DIR/file_updates.act
+
+            local old_mod_remover="mod:::$each_item"
+
+            decoding_special old_mod_remover
+            escape_handling old_mod_remover
+
+            sed -i "/$old_mod_remover/d" $ACTS_DIR/file_updates.act
+
+            continue
+        fi
+
+        escape_handling new_phrase
+
+        local new_cont=`cat $target_file`
+
+        for each_phrase in $real_phrases
+        do
+            each_phrase=`echo "$each_phrase" | \
+                            sed -e 's/-spc-/ /g; s/-tab-/\t/g'`
+
+            local msg="Modify $target_file: \"$each_phrase\" -> \"$new_phrase\""
+            decoding_special msg
+            log "INFO" "$msg"
+
+            escape_handling each_phrase
+
+            local new_cont=`echo "$new_cont" | \
+                            sed -e "s/$each_phrase/#$each_phrase\n$new_phrase/g"`
+        done
+
+        echo "$new_cont" > $target_file
+    done
+
+    for each_item in ${add_update_acts[@]}
+    do
+        pop_value $each_item target_file add_phrase
+        decoding_special add_phrase
+
+        log "INFO" "Add phrase to $target_file: \"$add_phrase\""
+
+        echo $add_phrase >> $target_file
+    done
+
+    for each_item in ${del_update_acts[@]}
+    do
+        pop_value $each_item target_file rm_phrase
+        decoding_special rm_phrase
+
+        rm_phrase=`echo "$rm_phrase" | sed -e "s/^'|'$//g"`
+
+        local real_phrases=`grep -r "$rm_phrase" $target_file | \
+                            grep -Ev "^\s*#" | \
+                            sed -e 's/ /-spc-/g; s/\t/-tab-/g'`
+
+        local new_cont=`cat $target_file`
+
+        for each_phrase in $real_phrases
+        do
+            each_phrase=`echo "$each_phrase" | \
+                            sed -e 's/-spc-/ /g; s/-tab-/\t/g'`
+
+            log "INFO" "Remove phrase from $target_file: \"$each_phrase\""
+
+            escape_handling each_phrase
+
+            local new_cont=`echo "$new_cont" | \
+                            sed -e "s/$each_phrase/#$each_phrase/g"`
+        done
+
+        echo "$new_cont" > $target_file
+    done
+}
+
+function do_copy()
+{
+    for each_item in ${copy_acts[@]}
+    do
+        pop_value $each_item orig target
+
+        decoding_special orig
+        decoding_special target
+
+        local dir=${target%/*}
+        local file=${target##*/}
+
+        if [ ! -e $dir ]; then
+            log "WARN" "Directory $dir does not exist, so that will make"
+            mkdir -p $dir
+        elif [ -d $target ] \
+                || ([ -e $target ] && [ $file != ".anchor" ]); then
+            log "INFO" "Backup $target"
+
+            cp -af --parents $target $BACK_DIR
+        fi
+
+        log "INFO" "Copy $orig to $target"
+
+        cp -af $orig $target
+    done
+}
+
+function do_link()
+{
+    for each_item in ${link_acts[@]}
+    do
+        pop_value $each_item orig target
+
+        decoding_special orig
+        decoding_special target
+
+        local dir=${target%/*}
+        local file=${target##/*}
+
+        if [ -e $target ] && [ ! -L $target ]; then
+            log "INFO" "Backup $target"
+
+            cp -af --parents $target $BACK_DIR
+        fi
+
+        if [ ! -e $dir ]; then
+            log "WARN" "Directory $dir does not exist, so that will make"
+            mkdir -p $dir
+        fi
+
+        if [ -e $target ] && [ ! -L $target ]; then
+            if [ ! -e $orig ]; then
+                log "INFO" "Move $target to $orig"
+                mv $target $orig
+            else
+                log "ERR" "$target already exists"
+                continue
+            fi
+        fi
+
+        log "INFO" "Link $target to $orig"
+
+        ln -sf $orig $target
+    done
+}
+
+function do_commands()
+{
+    for each_cmd in ${input_cmds[@]}
+    do
+        decoding_special each_cmd
+
+        if [ ! "$each_cmd" = 'NOP' ]; then
+            `$each_cmd &> /tmp/cmd_rst`
+            cmd_rst=`cat /tmp/cmd_rst`
+
+            log "INFO" "Execute command: $each_cmd"
+
+            if [ "$cmd_rst" != "" ];then
+                cmd_rst=`echo "$cmd_rst" | sed -e "s/^/\t/g"`
+                log "INFO" "$cmd_rst"
+            fi
+
+            rm -f /tmp/cmd_rst
+        fi
+    done
+}
+
+#####
+#    Undo The Actions to The System
+###
+function undo_actions()
+{
+    log "INFO" 'undo actions'
+
+    # commands
+    undo_commands
+
+    # link
+    undo_link
+
+    # copy
+    undo_copy
+
+    # updates
+    undo_file_update
+}
+
+function undo_file_update()
+{
+    for each_item in ${mod_update_acts[@]}
+    do
+        pop_value $each_item target_file old_phrase new_phrase
+        decoding_special old_phrase
+        decoding_special new_phrase
+
+        old_phrase=`echo "$old_phrase" | sed -e "s/^'|'$//g"`
+        new_phrase=`echo "$new_phrase" | sed -e "s/^'|'$//g"`
+
+        escape_handling old_phrase
+        escape_handling new_phrase
+
+        local new_cont=`cat $target_file`
+        local new_cont=`echo "$new_cont" | sed -e "/^$new_phrase/d"`
+
+        local real_phrases=`grep -r "$old_phrase" $target_file | \
+                            sed -e 's/ /-spc-/g; s/\t/-tab-/g'`
+
+        for each_phrase in $real_phrases
+        do
+            [ "$each_phrase" = "$new_phrase" ] && continue
+
+            each_phrase=`echo "$each_phrase" | \
+                            sed -e 's/-spc-/ /g; s/-tab-/\t/g'`
+
+            local phrase_no_annotation=`echo "$each_phrase" | sed -e 's/#//g'`
+
+            local msg="Modify $target_file: \"$new_phrase\" -> \"$phrase_no_annotation\""
+
+            decoding_special msg
+
+            log "INFO" "$msg"
+
+            escape_handling each_phrase
+            escape_handling phrase_no_annotation
+
+            local new_cont=`echo "$new_cont" | \
+                            sed -e "s/$each_phrase/$phrase_no_annotation/g"`
+        done
+
+        echo "$new_cont" > $target_file
+    done
+
+    for each_item in ${add_update_acts[@]}
+    do
+        pop_value $each_item target_file add_phrase
+        decoding_special add_phrase
+
+        add_phrase=`echo "$add_phrase" | sed -e "s/^'|'$//g"`
+
+        log "INFO" "Remove phrase from $target_file: \"$add_phrase\""
+
+        escape_handling add_phrase
+
+        local new_cont=`sed -e "/^$add_phrase/d" $target_file`
+
+        echo "$new_cont" > $target_file
+    done
+
+    for each_item in ${del_update_acts[@]}
+    do
+        pop_value $each_item target_file rm_phrase
+        decoding_special rm_phrase
+
+        rm_phrase=`echo $rm_phrase | sed -e "s/^'|'$//g"`
+        real_phrases=`grep -r "$rm_phrase" $target_file | \
+                        sed -e 's/ /-spc-/g; s/\t/-tab-/g'`
+
+        local new_cont=`cat $target_file`
+
+        for each_phrase in $real_phrases
+        do
+            each_phrase=`echo "$each_phrase" | \
+                            sed -e 's/-spc-/ /g; s/-tab-/\t/g'`
+
+            local phrase_no_annotation=`echo "$each_phrase" | sed -e 's/#//g'`
+
+            local msg="Add phrase to $target_file: \"$phrase_no_annotation\""
+
+            decoding_special msg
+
+            log "INFO" "$msg"
+
+            escape_handling each_phrase
+            escape_handling phrase_no_annotation
+
+            local new_cont=`echo "$new_cont" | \
+                            sed -e "s/$each_phrase/$phrase_no_annotation/g"`
+        done
+
+        echo "$new_cont" > $target_file
+    done
+}
+
+function undo_copy()
+{
+    for each_item in ${copy_acts[@]}
+    do
+        pop_value $each_item orig target
+
+        decoding_special orig
+        decoding_special target
+
+        if [ -e $BACK_DIR/$target ]; then
+            mv $BACK_DIR/$target $target
+            log "INFO" "Restore $target"
+        else
+            rm -rf $target
+            log "INFO" "Remove $target"
+        fi
+    done
+}
+
+function undo_link()
+{
+    for each_item in ${link_acts[@]}
+    do
+        pop_value $each_item orig target
+
+        decoding_special orig
+        decoding_special target
+
+        if [ -e $BACK_DIR/$orig ]; then
+            rm -f $target
+            mv $BACK_DIR/$orig $target
+            log "INFO" "Restore $target"
+        else
+            rm -f $target
+            log "INFO" "Unlink $target"
+        fi
+    done
+}
+
+function undo_commands()
+{
+    for each_cmd in ${revert_cmds[@]}
+    do
+        decoding_special each_cmd
+
+        if [ ! "$each_cmd" = 'NOP' ]; then
+            `$each_cmd &> /tmp/cmd_rst`
+            cmd_rst=`cat /tmp/cmd_rst`
+
+            log "INFO" "Execute command: $each_cmd"
+
+            if [ "$cmd_rst" != "" ];then
+                cmd_rst=`echo "$cmd_rst" | sed -e "s/^/\t/g"`
+                log "INFO" "$cmd_rst"
+            fi
+
+            rm -f /tmp/cmd_rst
+        fi
+    done
+}
+
+#===========================================================================
+# Main
+#===========================================================================
+
+disable_stdout
+
+#####
+#    Parse .act Files in rpm_deploy_actions and Make Action Arrays
+###
+make_array
+
+#####
+#    Apply Action Arrays
+###
+if [ "x $ACTION" = "x do" ]; then
+    do_actions
+fi
+
+#####
+#    Revert Action Arrays
+###
+if [ "x $ACTION" = "x undo" ]; then
+    undo_actions
+fi
+
+enable_stdout

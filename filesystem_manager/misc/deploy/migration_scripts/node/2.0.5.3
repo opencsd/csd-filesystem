@@ -1,0 +1,90 @@
+#!/bin/sh
+
+[ -f /var/lib/gms/functions ] && . /var/lib/gms/functions
+
+export PERL5LIB=$PERL5LIB:/usr/gms/perl5/lib/perl5
+
+NODES=($(cat /etc/hosts \
+            | grep 'made by gms' \
+            | cut -d ' ' -f2 \
+            | grep -v -- '-m$'))
+
+# 기존 Status를 분리하여 새로운 Status, Stage 생성
+function rebuild_status
+{
+    # Status : 클러스터/노드에서 stage, data 삭제
+    local NEW_STATUS="`cat /var/lib/gms/etcd_dump/Status | jq .`"
+
+    NEW_STATUS="`echo \"$NEW_STATUS\" | jq 'del(.cluster.stage, .cluster.data)'`"
+
+    for NODE in "${NODES[@]}";
+    do
+        NEW_STATUS="`echo \"$NEW_STATUS\" | jq \"del(.nodes[\\\"$NODE\\\"].stage, .nodes[\\\"$NODE\\\"].data)\"`"
+    done
+
+    echo "$NEW_STATUS" > /tmp/Status
+
+    /usr/gms/bin/acetcdctl set -d Status -f /tmp/Status
+
+    if [ $? -ne 0 ]; then
+        log 'ERR' '[NODE] Failed to set cluster data: Status'
+    fi
+
+    # Stage : 클러스터에서 status, reason 삭제, 노드에서 status 삭제
+    local NEW_STAGE="`cat /var/lib/gms/etcd_dump/Status | jq .`"
+
+    NEW_STAGE="`echo \"$NEW_STAGE\" | jq 'del(.cluster.status, .cluster.reason)'`"
+
+    for NODE in "${NODES[@]}";
+    do
+        NEW_STAGE="`echo \"$NEW_STAGE\" | jq \"del(.nodes[\\\"$NODE\\\"].status)\"`"
+    done
+
+    echo "$NEW_STAGE" > /tmp/Stage
+
+    /usr/gms/bin/acetcdctl set -d Stage -f /tmp/Stage
+
+    if [ $? -ne 0 ]; then
+        log 'ERR' '[NODE] Failed to set cluster data: Stage'
+    fi
+
+    return 0
+}
+
+log 'INFO' '[NODE] Migration for 2.0.5.3'
+
+log 'INFO' '[NODE] fix ctdb 10.interface script issue http://redmine.gluesys.com/redmine/issues/5398'
+
+sed -i \
+    's/\/sys\/class\/net\/\$iface\/bonding\/slaves/\/sys\/class\/net\/\$realiface\/bonding\/slaves/' \
+    /etc/ctdb/events.d/10.interface
+
+if [[ "`hostname -s`" =~ -1$ ]]; then
+    log 'INFO' '[NODE] Converts Status/Stage data...'
+
+    /usr/gms/bin/acetcdctl dump
+
+    if [ $? -ne 0 ]; then
+        log 'ERR' '[NODE] Failed to dump etcd data'
+        exit 1
+    fi
+
+    rebuild_status
+
+    if [ $? -ne 0 ]; then
+        log 'ERR' '[NODE] Failed to rebuild status'
+        exit 1
+    fi
+
+    /usr/gms/bin/acetcdctl get -d Status
+    /usr/gms/bin/acetcdctl get -d Stage
+
+    /usr/gms/bin/acetcdctl dump
+
+    if [ $? -ne 0 ]; then
+        log 'ERR' '[NODE] Failed to dump etcd data'
+        exit 1
+    fi
+fi
+
+log 'INFO' '[NODE] Migration is done'

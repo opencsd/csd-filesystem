@@ -1,0 +1,36 @@
+post:
+  x-mojo-to: 'Cluster::Initializer#activate'
+  operationId: cluster_init_activate
+  tags:
+    - cluster
+    - init
+  requestBody:
+    required: true
+    description: request
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            Node_Name:
+              type: string
+            Master_storage:
+              type: string
+            Version:
+              type: string
+            Master_Candidates:
+              type: array
+              items:
+                type: object
+                properties:
+                  Host:
+                    type: string
+                  Ipaddr:
+                    type: string
+            Local_Time:
+              type: string
+  responses:
+    200:
+      description: This system is activated on the cluster successfully.
+    401:
+      $ref: '#/components/responses/Unauthorized'

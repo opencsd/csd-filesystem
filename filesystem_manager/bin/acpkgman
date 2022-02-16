@@ -1,0 +1,1830 @@
+#!/usr/bin/perl -I/usr/gms/libgms -I/usr/gms/lib
+
+use v5.14;
+
+use strict;
+use warnings;
+use utf8;
+
+our $AUTHORITY = 'cpan:gluesys';
+
+use Data::Dumper;
+use File::Path qw/make_path/;
+use GMS::Common::IPC;
+use GMS::Common::Logger;
+use GMS::Common::OptArgs;
+use GMS::Package::Manager;
+use POSIX qw/strftime :signal_h/;
+use Sys::Hostname::FQDN qw/short/;
+use Term::ProgressBar;
+use Try::Tiny;
+
+#---------------------------------------------------------------------------
+#   Constants
+#---------------------------------------------------------------------------
+use constant {
+
+    # EXIT STATUSES
+    SUCCESS           => 0,
+    ALREADY_DEPLOYED  => 1,
+    ALREADY_UPGRADED  => 2,
+    ALREADY_MIGRATED  => 3,
+    INVALID_PARAM     => 243,
+    REPO_FAILURE      => 244,
+    PKG_FAILURE       => 245,
+    LOG_FAILURE       => 246,
+    INTERRUPTED       => 247,
+    DEPLOY_FAILURE    => 248,
+    BACKUP_FAILURE    => 249,
+    STAGE_FAILURE     => 250,
+    UPGRADE_FAILURE   => 251,
+    DOWNGRADE_FAILURE => 252,
+    MIGRATE_FAILURE   => 253,
+    RESTORE_FAILURE   => 254,
+
+    # DEFAULT VALUES
+    MODE_LOCAL   => 'LOCAL',
+    MODE_NETWORK => 'NETWORK',
+    DEF_REPOURL  => 'http://repo.gluesys.com/anystor-e',
+    DEF_LOGFILE  => '/var/log/gms/acpkgman.log',
+};
+
+#---------------------------------------------------------------------------
+#   Global Variables
+#---------------------------------------------------------------------------
+our %OPTS = (
+    MODE       => MODE_LOCAL,
+    LOGFILE    => DEF_LOGFILE,
+    REPOURL    => DEF_REPOURL,
+    REPOFILE   => undef,
+    DO_MIGRATE => 1,
+    DO_RESTORE => 1,
+    DEBUG      => 0,
+    PROGRESS   => 1,
+);
+
+our $PARSER   = undef;
+our $MNGR     = GMS::Package::Manager->new();
+our $REPO     = undef;
+our $PROGRESS = undef;
+
+our $STATUS = SUCCESS;
+our $MAX    = 0;
+our $CURR   = 0;
+
+# :WARNING 2017년 08월 02일 13시 51분 05초: by P.G.
+#   Package::Manager를 통해서 처리할 수 있는 방법을 고민해보자.
+our $CURR_VERSION;
+our $NEW_VERSION;
+
+#---------------------------------------------------------------------------
+#   Signal handler
+#---------------------------------------------------------------------------
+map {
+    $SIG{$_} = sub
+    {
+        my $sig = shift;
+
+        print "\n";
+
+        # 시그널 블록
+        my $sigset     = POSIX::SigSet->new(SIGINT, SIGTERM, SIGQUIT);
+        my $old_sigset = POSIX::SigSet->new;
+
+        if (!defined(sigprocmask(SIG_BLOCK, $sigset, $old_sigset)))
+        {
+            print_log(LOG_ERR, 'Could not block SIGINT');
+        }
+
+        print_log(LOG_INFO, "Interrupt signal received: $sig");
+
+        try
+        {
+            restore_all();
+        }
+        catch
+        {
+            print_log(LOG_ERR, "Unknown exception: @_");
+        };
+
+    RETURN:
+
+        # 시그널 블록 해제
+        if (!defined(sigprocmask(SIG_UNBLOCK, $old_sigset)))
+        {
+            print_log(LOG_ERR, 'Could not unblock SIGINT');
+        }
+
+        exit INTERRUPTED;
+    };
+} qw/INT TERM QUIT/;
+
+#-----------------------------------------------------------------------------
+#   Main
+#-----------------------------------------------------------------------------
+$PARSER = GMS::Common::OptArgs->new(
+    commands => [
+        {
+            path     => 'deploy',
+            desc     => 'deploy something',
+            callback => sub { $PARSER->print_help('deploy'); },
+        },
+        {
+            path     => 'deploy ssh-key',
+            desc     => 'deploy SSH public key to all nodes in cluster',
+            callback => sub
+            {
+                setup_log();
+                deploy_ssh_key(@_);
+            },
+        },
+        {
+            path     => 'deploy repository',
+            desc     => 'deploy package repository to all nodes in cluster',
+            callback => sub
+            {
+                setup_log();
+                deploy_repo(@_);
+            },
+        },
+        {
+            path     => 'upgrade',
+            desc     => 'upgrade AnyStor-E cluster/node',
+            callback => sub
+            {
+                setup_log();
+
+                $REPO
+                    = $MNGR->find_repo(sub { $_->id eq $MNGR->product_name; }
+                    );
+                $CURR_VERSION = $MNGR->cluster->version;
+
+                select_version();
+
+                if (!defined($NEW_VERSION))
+                {
+                    print_log(LOG_ERR, 'Wrong version!');
+                    exit UPGRADE_FAILURE;
+                }
+
+                $STATUS = set_stage();
+
+                return if ($STATUS);
+
+                $STATUS = upgrade(version => $NEW_VERSION);
+
+                if ($STATUS == ALREADY_UPGRADED)
+                {
+                    return;
+                }
+                elsif (($STATUS == UPGRADE_FAILURE) && $OPTS{DO_RESTORE})
+                {
+                    restore_all();
+                }
+                elsif (!$STATUS && $OPTS{DO_MIGRATE})
+                {
+                    migrate(version => $NEW_VERSION);
+                }
+
+                $STATUS = unset_stage();
+            },
+        },
+        {
+            path     => 'migrate',
+            desc     => 'migrate AnyStor-E cluster/node',
+            callback => sub
+            {
+                setup_log();
+
+                $REPO
+                    = $MNGR->find_repo(sub { $_->id eq $MNGR->product_name; }
+                    );
+                $CURR_VERSION = $MNGR->cluster->version;
+
+                select_version();
+
+                if (!defined($NEW_VERSION))
+                {
+                    print_log(LOG_ERR, 'Wrong version!');
+                    exit UPGRADE_FAILURE;
+                }
+
+                $STATUS = migrate(version => $NEW_VERSION);
+
+                return if ($STATUS == ALREADY_MIGRATED);
+
+                if ($STATUS == MIGRATE_FAILURE && $OPTS{DO_RESTORE})
+                {
+                    restore_all();
+                }
+            },
+        },
+        {
+            path     => 'restore',
+            desc     => 'restore AnyStor-E cluster/node',
+            callback => sub
+            {
+                setup_log();
+
+                $REPO
+                    = $MNGR->find_repo(sub { $_->id eq $MNGR->product_name; }
+                    );
+                $CURR_VERSION = $MNGR->cluster->version;
+
+                restore_all();
+            }
+        }
+    ],
+    options => [
+        {
+            pinned   => 1,
+            short    => 'd',
+            long     => 'debug',
+            desc     => 'debug mode',
+            callback => sub { $OPTS{DEBUG} = 1; },
+        },
+        {
+            pinned   => 1,
+            long     => 'no-progress',
+            desc     => 'do not prints progress-bar',
+            callback => sub { $OPTS{PROGRESS} = 0; },
+        },
+        {
+            pinned   => 1,
+            path     => 'upgrade',
+            long     => 'repo-url',
+            desc     => 'The URL of package repository',
+            valdesc  => '<URL>',
+            callback => \&handle_repourl,
+        },
+        {
+            pinned   => 1,
+            path     => 'upgrade',
+            long     => 'repo-file',
+            desc     => 'specify package repository file',
+            valdesc  => '<FILE>',
+            callback => \&handle_repofile,
+        },
+        {
+            pinned   => 1,
+            path     => 'upgrade',
+            long     => 'no-migrate',
+            desc     => 'perform upgrade without migrating',
+            callback => sub { $OPTS{DO_MIGRATE} = 0; },
+        },
+        {
+            pinned   => 1,
+            path     => 'upgrade',
+            long     => 'no-restore',
+            desc     => 'perform upgrade without restoring',
+            callback => sub { $OPTS{DO_RESTORE} = 0; },
+        },
+        {
+            pinned   => 1,
+            path     => 'migrate',
+            long     => 'repo-url',
+            desc     => 'The URL of package repository',
+            valdesc  => '<URL>',
+            callback => \&handle_repourl,
+        },
+        {
+            pinned   => 1,
+            path     => 'migrate',
+            long     => 'repo-file',
+            desc     => 'specify package repository file',
+            valdesc  => '<FILE>',
+            callback => \&handle_repofile,
+        },
+    ],
+    help_cmd  => 1,
+    help_lopt => 1,
+);
+
+$PARSER->parse(args => \@ARGV);
+
+exit $STATUS;
+
+#---------------------------------------------------------------------------
+#   Functions
+#---------------------------------------------------------------------------
+sub handle_repourl
+{
+    $OPTS{REPOURL} = shift;
+
+    if (!defined($OPTS{REPOURL}))
+    {
+        print_log(LOG_ERR, 'Repository URL not specified');
+        exit INVALID_PARAM;
+    }
+
+    $REPO = $MNGR->find_repo(sub { $_->id eq $MNGR->product_name; });
+
+    # 저장소 URL을 /etc/yum.repos.d/anystor-e.repo에 추가 혹은 생성
+    if (!$REPO)
+    {
+        print_log(LOG_INFO, "Adding remote repository config...");
+
+        $REPO = $MNGR->add_repo(
+            id       => $MNGR->product_name,
+            name     => $MNGR->product_desc,
+            enabled  => 1,
+            baseurl  => $OPTS{REPOURL},
+            gpgcheck => 0
+        );
+
+        if (!defined($REPO))
+        {
+            print_log(LOG_ERR, 'Failed to add repository');
+            exit REPO_FAILURE;
+        }
+
+        goto RETURN;
+    }
+
+    print_log(LOG_INFO, "Updating repository config...");
+
+    if ($REPO->update(baseurl => $OPTS{REPOURL}))
+    {
+        print_log(LOG_ERR, 'Failed to update repository');
+        exit REPO_FAILURE;
+    }
+
+    print_log(LOG_INFO, "Cleaning up repository cache...");
+
+    $REPO->clean_cache(type => 'metadata');
+
+RETURN:
+    return;
+}
+
+sub handle_repofile
+{
+    $OPTS{REPOFILE} = shift;
+
+    # 로컬 저장소를 신규 생성
+    if (!defined($REPO))
+    {
+        print_log(LOG_INFO, "Adding local repository config...");
+
+        if (!-d $MNGR->repodir)
+        {
+            if (!make_path($MNGR->repodir))
+            {
+                print_log(LOG_ERR,
+                    "Failed to make directory: ${\$MNGR->repodir}");
+                exit REPO_FAILURE;
+            }
+        }
+
+        $REPO = $MNGR->add_repo(
+            id       => $MNGR->product_name,
+            name     => $MNGR->product_desc,
+            enabled  => 1,
+            baseurl  => "file://${\$MNGR->repodir}",
+            gpgcheck => 0
+        );
+
+        if (!defined($REPO))
+        {
+            print_log(LOG_ERR, 'Failed to add repository');
+            exit REPO_FAILURE;
+        }
+    }
+
+    if (!defined($OPTS{REPOFILE}))
+    {
+        print_log(LOG_ERR, "Repoistory file not specified");
+        exit INVALID_PARAM;
+    }
+
+    if (!-f $OPTS{REPOFILE})
+    {
+        print_log(LOG_ERR, "Could not access file: $OPTS{REPOFILE}: $!");
+        exit REPO_FAILURE;
+    }
+
+    $REPO = $MNGR->find_repo(sub { $_->id eq $MNGR->product_name; });
+
+    if (!defined($REPO))
+    {
+        print_log(LOG_ERR,
+            "Failed to find repository: ${\$MNGR->product_name}");
+        exit REPO_FAILURE;
+    }
+
+    # 저장소 경로 변경
+    print_log(LOG_INFO, "Updating repository config...");
+
+    if ($REPO->update(baseurl => "file://${\$MNGR->repodir}"))
+    {
+        print_log(LOG_ERR, 'Failed to update repository');
+        exit REPO_FAILURE;
+    }
+
+    # REPOFILE에 지정된 저장소 tar 아키이빙을 압축 해제
+    my $parent_dir = substr($OPTS{REPOFILE}, 0, rindex($OPTS{REPOFILE}, '/'));
+
+    print_log(LOG_INFO, "Extracting repository from $OPTS{REPOFILE}...");
+
+    my $result = GMS::Common::IPC::exec(
+        cmd     => 'tar',
+        args    => ['-xpzf', $OPTS{REPOFILE}, '-C', $MNGR->repodir],
+        quite   => 1,
+        timeout => 0
+    );
+
+    if (!defined($result) || $result->{status})
+    {
+        print_log(LOG_ERR, "Failed to extract: $result->{err}");
+        exit REPO_FAILURE;
+    }
+
+    print_log(LOG_INFO, "Initializing local repository...");
+
+    $REPO->createrepo();
+
+    print_log(LOG_INFO, "Cleaning up repository cache...");
+
+    $REPO->clean_cache(type => 'metadata');
+
+    return;
+}
+
+sub setup_log
+{
+    my $LOGFH;
+
+    if (!open($LOGFH, '>>', $OPTS{LOGFILE}))
+    {
+        print STDERR "Failed to open log file: $OPTS{LOGFILE}: $!\n";
+        exit LOG_FAILURE;
+    }
+
+    catch_sig_warn(
+        datetime => 1,
+        procname => 0,
+        pid      => 1,
+        level    => 1,
+        filename => 0,
+        linenum  => 0,
+        stdout   => $LOGFH // 1,
+        stderr   => $LOGFH // 1,
+    );
+
+    logmask(LOG_INFO);
+
+    if ($OPTS{DEBUG})
+    {
+        catch_sig_warn(
+            mask     => LOG_DEBUG,
+            filename => 1,
+            linenum  => 1,
+        );
+
+        print_log(LOG_DEBUG, "Debug mode is enabled");
+    }
+}
+
+sub print_log
+{
+    my $level  = shift;
+    my $msg    = shift;
+    my $screen = shift // 1;
+
+    $|++;
+
+    if ($level <= LOG_ERR)
+    {
+        $level = LOG_ERR;
+
+        print STDERR "[ERR] $msg\n" if ($screen);
+    }
+    elsif ($level == LOG_WARNING)
+    {
+        $level = LOG_WARNING;
+
+        print STDOUT "[WARN] $msg\n" if ($screen);
+    }
+    elsif ($level == LOG_INFO)
+    {
+        $level = LOG_INFO;
+
+        print STDOUT "[INFO] $msg\n" if ($screen);
+    }
+    else
+    {
+        $level = LOG_DEBUG;
+
+        if ($OPTS{DEBUG})
+        {
+            print STDERR "[DEBUG] $msg\n" if ($screen);
+        }
+    }
+
+    my ($file, $line, $category);
+
+    if ($OPTS{DEBUG})
+    {
+        my @caller = caller(0);
+
+        if (@caller && defined($caller[1]))
+        {
+            ($file, $line) = @caller[1 .. 2];
+
+            foreach my $inc (@INC)
+            {
+                next unless ($file =~ m/^$inc\/(.+)$/);
+
+                $file = $1;
+
+                next unless ($file =~ m/^([^\/]+)/);
+
+                $category = $1;
+
+                last;
+            }
+        }
+    }
+
+    foreach my $m (split(/\n+/, $msg))
+    {
+        logging(
+            $level, undef, 1, $m,
+            $OPTS{DEBUG} ? $file : undef,
+            $OPTS{DEBUG} ? $line : undef
+        );
+    }
+
+    return;
+}
+
+sub deploy_ssh_key
+{
+    my @args = @_;
+
+    my $retval = SUCCESS;
+
+    foreach my $node ($MNGR->all_nodes)
+    {
+        print_log(LOG_INFO, "Depoying SSH-key to ${\$node->name}...");
+
+        if ($node->deploy_ssh_key())
+        {
+            print_log(LOG_ERR, "Failed to deploy SSH-key: ${\$node->name}");
+            $retval = DEPLOY_FAILURE;
+            goto RETURN;
+        }
+    }
+
+    print_log(LOG_INFO, 'Deploy has done successfully!');
+
+RETURN:
+
+    return $retval;
+}
+
+sub deploy_repo
+{
+    my $id     = shift // $MNGR->product_name;
+    my $retval = SUCCESS;
+
+    $REPO = $MNGR->find_repo(sub { $_->id eq $MNGR->product_name });
+
+    if (!defined($REPO))
+    {
+        print_log(LOG_ERR, "[ERR] Failed to find repository: $id");
+        $retval = DEPLOY_FAILURE;
+        goto RETURN;
+    }
+
+    print_log(LOG_INFO, "Deploying repository ${\$REPO->id}...");
+
+    for (my $i = 0; $i < $MNGR->all_nodes; $i++)
+    {
+        my $node = $MNGR->get_node($i);
+
+        next if ($node->name eq short());
+
+        print_log(LOG_INFO,
+            sprintf(
+                '- Deploying %s [%d/%d]',
+                $node->name, $i, scalar($MNGR->all_nodes) - 1
+            )
+        );
+
+        if ($MNGR->deploy_repo(node => $node))
+        {
+            print_log(LOG_ERR,
+                "Failed to deploy repository: ${\$node->name}");
+            $retval = DEPLOY_FAILURE;
+            goto RETURN;
+        }
+
+        print_log(LOG_INFO, "Repository has deployed to ${\$node->name}");
+
+        print_log(LOG_INFO,
+            sprintf(
+                '- Deploying repo-config to %s [%d/%d]',
+                $node->name, $i, scalar($MNGR->all_nodes) - 1
+            )
+        );
+
+        if ($node->deploy_file(local => $REPO->file, remote => $REPO->file))
+        {
+            print_log(LOG_ERR,
+                "Failed to deploy repo-config: ${\$REPO->file}");
+            $retval = DEPLOY_FAILURE;
+            goto RETURN;
+        }
+
+        print_log(LOG_INFO, "Repo-config has deployed to ${\$node->name}");
+
+        print_log(LOG_INFO, 'Cleaning up repository cache');
+
+        my $result = $node->deploy_cmd(
+            cmd     => 'yum clean all',
+            nb      => 0,
+            timeout => 60
+        );
+
+        if (!defined($result) || $result->{status})
+        {
+            print_log(LOG_ERR, 'Failed to clean-up repository cache');
+        }
+
+        print_log(LOG_INFO, 'Repository cache has cleaned up');
+    }
+
+    print_log(LOG_INFO, 'Deploy has done successfully!');
+
+RETURN:
+    return $retval;
+}
+
+sub select_version
+{
+    my $retval = SUCCESS;
+
+    # 저장소가 없다면 추가
+    if (!defined($REPO))
+    {
+        print_log(LOG_INFO, "Initializing default repository...");
+
+        my $result = GMS::Common::IPC::exec(
+            cmd     => 'wget',
+            args    => [DEF_REPOURL, '-o', '/dev/null'],
+            quite   => 1,
+            timeout => 0
+        );
+
+        if (!defined($result) || $result->{status})
+        {
+            print_log(LOG_INFO,
+                "Could not use remote repository: $result->{err}");
+
+            my $baseurl = "file://${\$MNGR->repodir}";
+
+            $REPO = $MNGR->add_repo(
+                id       => $MNGR->product_name,
+                name     => $MNGR->product_desc,
+                enabled  => 1,
+                baseurl  => $baseurl,
+                gpgcheck => 0,
+            );
+
+            if (!defined($REPO))
+            {
+                print_log(LOG_ERR, "Failed to add repository: $baseurl");
+                $retval = REPO_FAILURE;
+                goto RETURN;
+            }
+
+            if ($REPO->createrepo())
+            {
+                print_log(LOG_ERR, "Failed to update repository: $baseurl");
+                $retval = REPO_FAILURE;
+                goto RETURN;
+            }
+        }
+        else
+        {
+            $REPO = $MNGR->add_repo(
+                id       => $MNGR->product_name,
+                name     => $MNGR->product_desc,
+                enabled  => 1,
+                baseurl  => $OPTS{REPOURL},
+                gpgcheck => 0
+            );
+
+            if (!defined($REPO))
+            {
+                print_log(LOG_ERR,
+                    "Failed to add repository: $OPTS{REPOURL}");
+                $retval = REPO_FAILURE;
+                goto RETURN;
+            }
+        }
+
+        $REPO->clean_cache(type => 'metadata');
+    }
+
+    print_log(LOG_INFO, 'Finding packages...');
+
+    my @pkgs = $REPO->find_pkgs(name => 'anystor-e');
+
+    if (!@pkgs)
+    {
+        print_log(LOG_ERR, 'Could not find package: anystor-e');
+        $retval = REPO_FAILURE;
+        goto RETURN;
+    }
+
+    my $pkg;
+
+    # 사용 가능한 AnyStor-E 버전을 출력 후 사용자 선택 대기
+    while (1)
+    {
+        printf("[Available packages]\n");
+
+        for (my $i = 0; $i < @pkgs; $i++)
+        {
+            my $updown
+                = $MNGR->cmp_version($pkgs[$i]->version, $CURR_VERSION);
+
+            printf("%s [%d] %s %s\n",
+                $updown == 0 ? '*' : $updown < 0 ? '-' : '+',
+                $i + 1, $pkgs[$i]->name, $pkgs[$i]->version);
+        }
+
+        printf("Choose the number of package to be upgraded: ");
+
+        chomp(my $selected = <>);
+
+        if ($selected !~ m/^[1-9]([0-9]|)+$/
+            || $selected > @pkgs)
+        {
+            print STDERR "Wrong package selected\n";
+            next;
+        }
+
+        $selected--;
+
+        $pkg = $pkgs[$selected];
+
+        my $cmp = $MNGR->cmp_version($pkg->version, $CURR_VERSION);
+
+        if ($cmp == 0)
+        {
+            print STDERR
+                "Selected package's version is same to current version\n";
+            next;
+        }
+        elsif ($cmp != 1)
+        {
+            print STDERR
+                "Selected package's version is lower then current version\n";
+            next;
+        }
+
+        printf("Your selected package\n");
+        printf("- Name      : %s\n", $pkg->name);
+        printf("- Version   : %s\n", $pkg->version);
+        printf("- Build     : %s\n", $pkg->build);
+        printf("- Timestamp : %s\n",
+            strftime('%Y-%m-%d %H:%M:%S', localtime($pkg->timestamp)));
+        printf("- Size      : %d\n", $pkg->size);
+
+        printf("Do you want to continue? [y/N]: ");
+
+        chomp(my $yn = <>);
+
+        last if ($yn =~ m/^(y|yes)$/i);
+    }
+
+    $NEW_VERSION = $pkg->version;
+
+RETURN:
+    return $retval;
+}
+
+sub upgrade
+{
+    my %args   = @_;
+    my $retval = SUCCESS;
+
+    # 선택된 패키지로 판올림/이전 진행
+    print_log(LOG_INFO,
+        "Upgrade has started: $CURR_VERSION -> $args{version}");
+
+    # 1. 사전 준비
+    my $steps = 5;
+
+    print_log(LOG_INFO, "Preparing [1/$steps]");
+
+    # :WARN 2017년 04월 06일 22시 19분 38초: by P.G.
+    #   SSH 키 자동 배포 시, 2.0.3.x의 RPM에서 자동으로 판올림 해버리는 문제로
+    #   인해 주석 처리
+    #deploy_ssh_key();
+
+    # 2. 저장소 배포
+    print_log(LOG_INFO, "Repository deploying [2/$steps]");
+
+    for (my $i = 0; $i < $MNGR->all_nodes; $i++)
+    {
+        my $node = $MNGR->get_node($i);
+
+        if ($node->name eq short())
+        {
+            $MAX = $node->count_files(path => $MNGR->repodir);
+            next;
+        }
+
+        my $msg = sprintf('- Deploying %s [%d/%d]',
+            $node->name, $i, scalar($MNGR->all_nodes) - 1);
+
+        $CURR = 0;
+
+        if ($OPTS{PROGRESS})
+        {
+            $PROGRESS = Term::ProgressBar->new(
+                {
+                    name       => $msg,
+                    count      => $MAX,
+                    remove     => 0,
+                    ETA        => 'linear',
+                    term_width => $PARSER->terminal_width,
+                }
+            );
+        }
+        else
+        {
+            print_log(LOG_INFO, $msg);
+        }
+
+        my $deprepo_cb = sub
+        {
+            my $entry = $_[1];
+
+            if ($OPTS{PROGRESS})
+            {
+                $PROGRESS->update($CURR >= $MAX ? $MAX - 1 : $CURR++);
+            }
+
+            print_log(LOG_INFO, "-> $entry->{filename}", !$OPTS{PROGRESS});
+
+            return 1;
+        };
+
+        if ($MNGR->deploy_repo(node => $node, wanted => $deprepo_cb))
+        {
+            print "\n";
+            print_log(LOG_ERR,
+                "Failed to deploy repository: ${\$node->name}");
+            $retval = DEPLOY_FAILURE;
+            goto RETURN;
+        }
+
+        if ($OPTS{PROGRESS})
+        {
+            $PROGRESS->update($MAX);
+            print "\n";
+        }
+
+        print_log(LOG_INFO, "Repository has deployed to ${\$node->name}");
+
+        if ($node->name ne short())
+        {
+            $msg = sprintf('- Deploying repo-config to %s [%d/%d]',
+                $node->name, $i, scalar($MNGR->all_nodes) - 1);
+
+            print_log(LOG_INFO, $msg);
+
+            if ($node->deploy_file(
+                local  => $REPO->file,
+                remote => $REPO->file
+            ))
+            {
+                print_log(LOG_ERR,
+                    "Failed to deploy repo-config: ${\$REPO->file}");
+                $retval = DEPLOY_FAILURE;
+                goto RETURN;
+            }
+
+            print_log(LOG_INFO,
+                "Repo-config has deployed to ${\$node->name}");
+        }
+
+        print_log(LOG_INFO, '- Cleaning up repository cache');
+
+        my $result = $node->deploy_cmd(
+            cmd     => 'yum clean all',
+            nb      => 0,
+            timeout => 60
+        );
+
+        if (!defined($result) || $result->{status})
+        {
+            print_log(LOG_ERR, 'Failed to clean-up repository cache');
+        }
+
+        print_log(LOG_INFO, 'Repository cache has cleaned up');
+    }
+
+    # 3. 판올림 필요한 노드들 선별
+    #   - 각 노드의 버전 확인하여 최신 버전 이전인 노드들만 선별
+    print_log(LOG_INFO, "Node checking [3/$steps]");
+
+    my @upg_targets = ();
+
+    for (my $i = 0; $i < $MNGR->all_nodes; $i++)
+    {
+        my $node = $MNGR->get_node($i);
+
+        my $msg = sprintf('- Checking %s [%d/%d]',
+            $node->name, $i + 1, scalar($MNGR->all_nodes));
+
+        if ($OPTS{PROGRESS})
+        {
+            $PROGRESS = Term::ProgressBar->new(
+                {
+                    name       => $msg,
+                    count      => 1,
+                    remove     => 0,
+                    ETA        => 'linear',
+                    term_width => $PARSER->terminal_width,
+                }
+            );
+        }
+        else
+        {
+            print_log(LOG_INFO, $msg);
+        }
+
+        if ($node->cmp_version($args{version}, $node->version) == 1)
+        {
+            push(@upg_targets, $node);
+
+            $PROGRESS->update() if ($OPTS{PROGRESS});
+
+            print_log(LOG_INFO,
+                "- Node ${\$node->name} will be upgraded: ${\$node->version} -> $args{version}"
+            );
+        }
+        else
+        {
+            $PROGRESS->update() if ($OPTS{PROGRESS});
+
+            print_log(LOG_WARNING,
+                "Node ${\$node->name} will not be upgraded: ${\$node->version} -> $args{version}"
+            );
+        }
+    }
+
+    if (!@upg_targets)
+    {
+        print_log(LOG_ERR, 'No nodes exist to be upgraded');
+        $retval = UPGRADE_FAILURE;
+        goto RETURN;
+    }
+    else
+    {
+        print_log(LOG_INFO,
+            "${\scalar(@upg_targets)} nodes will be upgraded");
+    }
+
+    # 4. 클러스터 백업
+    print_log(LOG_INFO, "Cluster backup [4/$steps]");
+
+    if ($MNGR->cluster->backup())
+    {
+        print_log(LOG_ERR, 'Failed to backup cluster');
+        $retval = BACKUP_FAILURE;
+        goto RETURN;
+    }
+    else
+    {
+        print_log(LOG_INFO, "Cluster has backed up");
+    }
+
+    # 5. 판올림
+    print_log(LOG_INFO, "Node upgrade [5/$steps]");
+
+    for (my $i = 0; $i < @upg_targets; $i++)
+    {
+        my $node = $upg_targets[$i];
+        my $msg  = sprintf('- Backing up %s [%d/%d]',
+            $node->name, $i + 1, scalar(@upg_targets));
+
+        $MAX  = 0;
+        $CURR = 0;
+
+        # 백업 대상 파일 개수 세기
+        map { $MAX += $node->count_files(node => $node, path => $_); }
+            @{$node->backup_targets};
+
+        # 작업 상태 정보 갱신
+        #   - 오류 시 복구를 위한 최근 백업 보관
+        if ($OPTS{PROGRESS})
+        {
+            $PROGRESS = Term::ProgressBar->new(
+                {
+                    name       => $msg,
+                    count      => $MAX,
+                    remove     => 0,
+                    ETA        => 'linear',
+                    term_width => $PARSER->terminal_width,
+                }
+            );
+        }
+        else
+        {
+            print_log(LOG_INFO, $msg);
+        }
+
+        my $back_cb = sub
+        {
+            my $line = $_;
+
+            return unless ($OPTS{PROGRESS});
+
+            if (substr($line, 0, 1) eq '/'
+                && substr($line, length($line) - 1, 1) ne '/')
+            {
+                $PROGRESS->update($CURR >= $MAX ? $MAX - 1 : $CURR++);
+            }
+        };
+
+        if ($node->backup(cb_out => $back_cb))
+        {
+            print "\n";
+            print_log(LOG_ERR, "Failed to back up node: ${\$node->name}");
+
+            my $continue;
+
+            while (1)
+            {
+                print 'Do you want to upgrade without backup? [y/n] : ';
+
+                my $yn = <>;
+
+                chomp($yn);
+
+                if (length($yn) == 0 || $yn eq '')
+                {
+                    next;
+                }
+                elsif ($yn =~ m/^(y|yes)$/i)
+                {
+                    $continue = 1;
+                    last;
+                }
+                elsif ($yn =~ m/^(n|no)$/i)
+                {
+                    $continue = 0;
+                    last;
+                }
+            }
+
+            # 이 경우, 이전에 판올림된 노드가 있으면 복구
+            if (!$continue)
+            {
+                $retval = BACKUP_FAILURE;
+                goto RETURN;
+            }
+            else
+            {
+                print_log(LOG_WARNING,
+                    "Node ${\$node->name} will be upgraded without backup");
+            }
+        }
+        else
+        {
+            if ($OPTS{PROGRESS})
+            {
+                $PROGRESS->update($MAX);
+                print "\n";
+            }
+            else
+            {
+                print_log(LOG_INFO, "Node ${\$node->name} backed up");
+            }
+        }
+
+        if (!defined($node->latest_backup))
+        {
+            print_log(LOG_ERR,
+                "Any backup does not exist for ${\$node->name}");
+        }
+
+        $MAX  = 100;
+        $CURR = 0;
+
+        $msg = sprintf('- Upgrading %s [%d/%d]',
+            $node->name, $i + 1, scalar(@upg_targets));
+
+        if ($OPTS{PROGRESS})
+        {
+            $PROGRESS = Term::ProgressBar->new(
+                {
+                    name       => $msg,
+                    count      => $MAX,
+                    remove     => 0,
+                    ETA        => 'linear',
+                    term_width => $PARSER->terminal_width,
+                }
+            );
+        }
+        else
+        {
+            print_log(LOG_INFO, $msg);
+        }
+
+        try
+        {
+            # 1. 패키지 갱신 진행률
+            # 2. 패키지 설치 진행률
+            #   - 설치 과정에서 [현재 개수/전체 개수] ~~ 진행률이
+            #     표시되므로 이를 이용
+            my $upg_cb_out = sub
+            {
+                my $line = $_;
+
+                $line =~ s/(^\s+|\s+$)//;
+
+                given ($line)
+                {
+                    when (m/^(?<msg>Downloading Packages)/i)
+                    {
+                        if ($OPTS{PROGRESS})
+                        {
+                            $PROGRESS->message("! $+{msg}");
+                        }
+
+                        print_log(LOG_INFO, $line, !$OPTS{PROGRESS});
+                    }
+                    when (
+                        m/^(Installing|Updating)\s+:\s+.*\s+(?<curr>\d+)\/(?<max>\d+)/
+                        )
+                    {
+                        if ($OPTS{PROGRESS})
+                        {
+                            $PROGRESS->update(
+                                int(($+{curr} / $+{max}) * 100 * 0.8));
+                        }
+
+                        print_log(LOG_INFO, $line, !$OPTS{PROGRESS});
+                    }
+                    when (m/^Cleanup\s+:\s+.*\s+(?<curr>\d+)\/(?<max>\d+)/)
+                    {
+                        print_log(LOG_INFO, $line, !$OPTS{PROGRESS});
+                    }
+                    when (m/^Verifying\s+:\s+.*\s+(?<curr>\d+)\/(?<max>\d+)/)
+                    {
+                        if ($OPTS{PROGRESS})
+                        {
+                            $PROGRESS->update(
+                                80 + int(($+{curr} / $+{max}) * 20));
+                        }
+
+                        print_log(LOG_INFO, $line, $OPTS{PROGRESS});
+                    }
+                    default
+                    {
+                        print_log(LOG_INFO, $line, 0);
+                    }
+                }
+            };
+
+            # 1. YUM 자체 실패에 대한 예외 처리
+            #   - 설치 과정 자체가 수행되지 않았으므로 복구 불필요
+            # 2. RPM 훅에 대한 플래깅 처리
+            #   - %pre/%post : 복구
+            my $upg_cb_err = sub
+            {
+                my $line = $_;
+
+                if ($line =~ m/%pre\(.+\) scriptlet failed/
+                    || $line =~ m/%post\(.+\) scriptlet failed/)
+                {
+                    $node->status('UPGRADE_FAILURE');
+                }
+
+                print_log(LOG_ERR, $line, 0);
+            };
+
+            # 하나라도 판올림 진행 중이라면 복구 수행
+            #   - 백업이 만들어지지 않은 노드는 X
+            if ($node->upgrade(
+                version     => $NEW_VERSION,
+                enablerepo  => $MNGR->product_name,
+                disablerepo => '*',
+                cb_out      => $upg_cb_out,
+                cb_err      => $upg_cb_err
+            ))
+            {
+                die $node->name;
+            }
+
+            if ($OPTS{PROGRESS})
+            {
+                $PROGRESS->update($MAX);
+                print "\n";
+            }
+        }
+        catch
+        {
+            print_log(LOG_ERR, "Unexpected error: @_");
+            $retval = UPGRADE_FAILURE;
+        };
+
+        if ($node->status eq 'UPTODATE')
+        {
+            print_log(LOG_INFO, "Node ${\$node->name} is up to date");
+        }
+        elsif ($node->status ne 'UPGRADED')
+        {
+            print_log(LOG_ERR, "Failed to upgrade ${\$node->name}");
+            goto RETURN;
+        }
+        else
+        {
+            print_log(LOG_INFO, "Node ${\$node->name} has upgraded");
+        }
+    }
+
+RETURN:
+    if ($retval)
+    {
+        print_log(LOG_ERR, 'Failed to upgrade!');
+    }
+    elsif ($MNGR->count_nodes
+        == scalar($MNGR->filter_nodes(sub { $_->status eq 'UPTODATE'; })))
+    {
+        print_log(LOG_INFO, 'All nodes are up to date!');
+        $retval = ALREADY_UPGRADED;
+    }
+    else
+    {
+        print_log(LOG_INFO, 'Upgrade has done successfully!');
+    }
+
+    return $retval;
+}
+
+sub migrate
+{
+    my %args   = @_;
+    my $retval = SUCCESS;
+
+    print_log(LOG_INFO,
+        "Migration has started: $CURR_VERSION -> $args{version}");
+
+    # 1. 사전 준비
+    my $steps = 4;
+
+    print_log(LOG_INFO, "Preparing [1/$steps]");
+
+    # :WARN 2017년 04월 06일 22시 19분 38초: by P.G.
+    #   SSH 키 자동 배포 시, 2.0.3.x의 RPM에서 자동으로 판올림 해버리는 문제로
+    #   인해 주석 처리
+    #deploy_ssh_key();
+
+    # 2. 이주 필요한 노드를 선별
+    print_log(LOG_INFO, "Node checking [2/$steps]");
+
+    my @mig_targets = ();
+
+    for (my $i = 0; $i < $MNGR->all_nodes; $i++)
+    {
+        my $node = $MNGR->get_node($i);
+
+        $MAX  = 0;
+        $CURR = 0;
+
+        my $msg = sprintf('- Checking %s [%d/%d]',
+            $node->name, $i + 1, scalar($MNGR->all_nodes));
+
+        if ($OPTS{PROGRESS})
+        {
+            $PROGRESS = Term::ProgressBar->new(
+                {
+                    name       => $msg,
+                    count      => 1,
+                    remove     => 0,
+                    ETA        => 'linear',
+                    term_width => $PARSER->terminal_width,
+                }
+            );
+        }
+        else
+        {
+            print_log(LOG_INFO, $msg);
+        }
+
+        if ($node->cmp_version($args{version}, $node->version) == 1)
+        {
+            push(@mig_targets, $node);
+
+            $PROGRESS->update() if ($OPTS{PROGRESS});
+
+            print_log(LOG_INFO,
+                sprintf(
+                    "- Node %s will be migrated: %s",
+                    $node->name, $node->version
+                )
+            );
+        }
+        else
+        {
+            $PROGRESS->update() if ($OPTS{PROGRESS});
+
+            print_log(LOG_WARNING,
+                sprintf(
+                    "- Node %s will not be migrated: %s",
+                    $node->name, $node->version
+                )
+            );
+        }
+    }
+
+    if (!@mig_targets)
+    {
+        print_log(LOG_INFO, 'No nodes exists to be migrated');
+        $retval = MIGRATE_FAILURE;
+        goto RETURN;
+    }
+    else
+    {
+        print_log(LOG_INFO,
+            "${\scalar(@mig_targets)} nodes will be migrated");
+    }
+
+    # 3. 노드 수준 이주 수행
+    print_log(LOG_INFO, "Node migration [3/$steps]");
+
+    for (my $i = 0; $i < @mig_targets; $i++)
+    {
+        my $node = $mig_targets[$i];
+
+        $MAX  = 100;
+        $CURR = 0;
+
+        my $msg = sprintf('- Migrating %s [%d/%d]',
+            $node->name, $i + 1, scalar(@mig_targets));
+
+        if ($OPTS{PROGRESS})
+        {
+            $PROGRESS = Term::ProgressBar->new(
+                {
+                    name       => $msg,
+                    count      => $MAX,
+                    remove     => 0,
+                    ETA        => 'linear',
+                    term_width => $PARSER->terminal_width,
+                }
+            );
+        }
+        else
+        {
+            print_log(LOG_INFO, $msg);
+        }
+
+        if ($node->migrate(
+            version => $NEW_VERSION,
+            cb_out  => sub { print_log(LOG_INFO, $_); },
+            cb_err  => sub { print_log(LOG_ERR,  $_); }
+        ))
+        {
+            print "\n";
+            print_log(LOG_ERR, "Failed to migrate node: ${\$node->name}");
+            $retval = MIGRATE_FAILURE;
+            goto RETURN;
+        }
+
+        if ($OPTS{PROGRESS})
+        {
+            $PROGRESS->update($MAX);
+            print "\n";
+        }
+
+        print_log(LOG_INFO, "Node ${\$node->name} has migrated");
+    }
+
+    # 4. 클러스터 수준 이주 수행
+    print_log(LOG_INFO, "Cluster migration [4/$steps]");
+
+    $MAX  = 100;
+    $CURR = 0;
+
+    if ($OPTS{PROGRESS})
+    {
+        $PROGRESS = Term::ProgressBar->new(
+            {
+                name       => "- ${\$MNGR->cluster->name}",
+                count      => $MAX,
+                remove     => 0,
+                ETA        => 'linear',
+                term_width => $PARSER->terminal_width,
+            }
+        );
+    }
+    else
+    {
+        print_log(LOG_INFO, "- ${\$MNGR->cluster->name}");
+    }
+
+    if ($MNGR->cluster->migrate(version => $NEW_VERSION))
+    {
+        print "\n";
+        print_log(LOG_ERR,
+            "Failed to migrate cluster: ${\$MNGR->cluster->name}");
+        $retval = MIGRATE_FAILURE;
+        goto RETURN;
+    }
+
+    if ($OPTS{PROGRESS})
+    {
+        $PROGRESS->update($MAX);
+        print "\n";
+    }
+
+    print_log(LOG_INFO, "Cluster ${\$MNGR->cluster->name} has migrated");
+
+RETURN:
+    if ($retval == ALREADY_MIGRATED)
+    {
+        print_log(LOG_INFO, 'All nodes are already migrated!');
+    }
+    elsif ($retval)
+    {
+        print_log(LOG_ERR, 'Failed to migrate!');
+    }
+    else
+    {
+        print_log(LOG_INFO, 'Migration has done successfully!');
+    }
+
+    return $retval;
+}
+
+sub restore
+{
+    my %args   = @_;
+    my $retval = SUCCESS;
+
+    my $target  = $args{target};
+    my $version = $args{version};
+    my $backup  = $args{backup};
+
+    print_log(LOG_INFO, "Restoring has started: ${\$target->name}: $version");
+
+    # 1. 사전 준비
+    my $steps = 3;
+    my $step  = 1;
+
+    print_log(LOG_INFO, sprintf('Preparing [%d/%d]', $step++, $steps));
+
+    if (!defined($backup))
+    {
+        my @backups = $target->all_backups;
+
+        foreach my $b (@backups)
+        {
+            # 동일 버전 내의 가장 최근 백업을 사용
+            if ($b->version eq $version)
+            {
+                $backup = $b;
+            }
+        }
+    }
+
+    if (!defined($backup))
+    {
+        print_log(LOG_ERR, "Backup does not exist: ${\$target->name}");
+        $retval = BACKUP_FAILURE;
+        goto RETURN;
+    }
+
+    # 2. 판내림
+    print_log(LOG_INFO, sprintf('Downgrading [%d/%d]', $step++, $steps));
+
+    if ($backup->tag eq 'NODE')
+    {
+        $MAX  = 100;
+        $CURR = 0;
+
+        my $msg = sprintf('- Downgrading %s', $target->name);
+
+        if ($OPTS{PROGRESS})
+        {
+            $PROGRESS = Term::ProgressBar->new(
+                {
+                    name       => $msg,
+                    count      => $MAX,
+                    remove     => 0,
+                    ETA        => 'linear',
+                    term_width => $PARSER->terminal_width,
+                }
+            );
+        }
+        else
+        {
+            print_log(LOG_INFO, $msg);
+        }
+
+        if ($target->downgrade(
+            version     => $version,
+            enablerepo  => $MNGR->product_name,
+            disablerepo => '*',
+            cb_out      => sub
+            {
+                print_log(LOG_INFO, $_, 0);
+
+                if ($OPTS{PROGRESS})
+                {
+                    $PROGRESS->update($CURR >= $MAX ? $MAX - 1 : $CURR++);
+                }
+            },
+            cb_err => sub
+            {
+                print_log(LOG_ERR, $_, 0);
+            }
+        ))
+        {
+            print "\n";
+            print_log(LOG_ERR, "Failed to downgrade: ${\$target->name}");
+            $retval = DOWNGRADE_FAILURE;
+            goto RETURN;
+        }
+
+        if ($OPTS{PROGRESS})
+        {
+            $PROGRESS->update($MAX);
+            print "\n";
+        }
+
+        print_log(LOG_INFO, "${\$target->name} has downgraded");
+    }
+
+    # 3. 백업으로부터 복구
+    print_log(LOG_INFO, sprintf('Restoring [%d/%d]', $step++, $steps));
+
+    # 복구 대상 백업에 포함된 전체 파일/디렉터리 개수 구하기
+    my $result = $target->deploy_cmd(
+        cmd     => "tar -tpf ${\$backup->path} | wc -l",
+        nb      => 0,
+        timeout => 60
+    );
+
+    if (!defined($result) || $result->{status})
+    {
+        print_log(LOG_ERR,
+            "Failed to get the backup information: $result->{err}");
+        $retval = BACKUP_FAILURE;
+        goto RETURN;
+    }
+
+    $MAX  = int($result->{out});
+    $CURR = 0;
+
+    my $msg = sprintf('- %s', $target->name);
+
+    if ($OPTS{PROGRESS})
+    {
+        $PROGRESS = Term::ProgressBar->new(
+            {
+                name       => $msg,
+                count      => $MAX,
+                remove     => 0,
+                ETA        => 'linear',
+                term_width => $PARSER->terminal_width,
+            }
+        );
+    }
+    else
+    {
+        print_log(LOG_INFO, $msg);
+    }
+
+    # 복구 시작
+    if ($target->restore(
+        backup => $backup,
+        cb_out => sub
+        {
+            if ($OPTS{PROGRESS})
+            {
+                $PROGRESS->update($CURR >= $MAX ? $MAX - 1 : $CURR);
+            }
+        },
+        cb_err => sub
+        {
+            print_log(LOG_ERR, $_, 0);
+
+            if ($OPTS{PROGRESS})
+            {
+                $PROGRESS->update($CURR >= $MAX ? $MAX - 1 : $CURR)
+                    if ($_ =~ m/time stamp/);
+            }
+        }
+    ))
+    {
+        print "\n";
+        print_log(LOG_ERR, "Failed to restore: ${\$target->name}");
+        $retval = RESTORE_FAILURE;
+        goto RETURN;
+    }
+
+    if ($OPTS{PROGRESS})
+    {
+        $PROGRESS->update($MAX);
+        print "\n";
+    }
+
+RETURN:
+    if ($target->status ne 'RESTORED')
+    {
+        print_log(LOG_ERR, 'Failed to restore!');
+        return RESTORE_FAILURE;
+    }
+    else
+    {
+        print_log(LOG_INFO, "${\$target->name} has restored");
+    }
+
+    return $retval;
+}
+
+sub restore_all
+{
+    my $count  = 0;
+    my $retval = SUCCESS;
+
+    foreach my $node ($MNGR->all_nodes())
+    {
+        # 마지막 백업이 없다면 복구 불가능
+        my $status = $node->status;
+
+        print_log(LOG_INFO, "${\$node->name}: $status");
+
+        # status에 따라
+        #
+        # - READY라면 준비 단계이므로 건너뜀
+        # - UPTODATE라면 이미 판올림된 상태이므로 건너뜀
+        next if ($status eq 'READY' || $status eq 'UPTODATE');
+
+        # status가 UPGRADING이라면
+        if ($status eq 'UPGRADING')
+        {
+            # 2개 이상 설치되어 있다면 중간에 설치가 중단된 것이므로 복구
+            my @installed = $node->installed();
+
+            map { print_log(LOG_INFO, "- Installed: $_", 0); } @installed;
+
+            next if (scalar(grep { $_ =~ m/$NEW_VERSION/; } @installed) == 0);
+        }
+
+        # 복구 시작
+        $count++;
+
+        print_log(LOG_INFO, "Trying to restore: ${\$node->name}");
+
+        $retval = restore(target => $node, version => $CURR_VERSION);
+
+        if ($retval)
+        {
+            print_log(LOG_ERR, "Failed to restore node: ${\$node->name}");
+            return $retval;
+        }
+    }
+
+    return if (!$count);
+
+    $retval = restore(target => $MNGR->cluster, version => $CURR_VERSION);
+
+    if ($retval)
+    {
+        print_log(LOG_ERR,
+            "Failed to restore cluster: ${\$MNGR->cluster->name}");
+        return $retval;
+    }
+
+    return SUCCESS;
+}
+
+sub set_stage
+{
+    my $retval = SUCCESS;
+
+    # 스테이지 사전 검사
+    print_log(LOG_INFO, "Checking current cluster stage...");
+
+    my $cg    = GMS::Cluster::ClusterGlobal->new();
+    my $stage = $cg->get_stage('cluster');
+
+    if (!(defined($stage) && ref($stage) eq 'HASH'))
+    {
+        print_log(LOG_ERR, 'Failed to get stage');
+        $retval = STAGE_FAILURE;
+        goto RETURN;
+    }
+
+    print_log(LOG_INFO, "Current cluster is $stage->{stage}");
+
+    if (!(defined($stage->{stage}) && $stage->{stage} eq 'running'))
+    {
+        print_log(LOG_ERR,
+            "Upgrade can performed only if current stage is in 'running'");
+        $retval = STAGE_FAILURE;
+        goto RETURN;
+    }
+
+    # 스테이지 설정
+    print_log(LOG_INFO, 'Setting cluster stage to upgrading');
+
+    if (!$cg->set_stage('upgrading', 'cluster'))
+    {
+        print_log(LOG_ERR, 'Failed to set stage');
+        $retval = STAGE_FAILURE;
+        goto RETURN;
+    }
+
+RETURN:
+    return $retval;
+}
+
+sub unset_stage
+{
+    my $retval = SUCCESS;
+    my $cg     = GMS::Cluster::ClusterGlobal->new();
+
+    # 스테이지 설정
+    print_log(LOG_INFO, "Setting cluster stage to running");
+
+    if (!$cg->set_stage('running', 'cluster'))
+    {
+        print_log(LOG_ERR, 'Failed to set stage');
+        $retval = STAGE_FAILURE;
+        goto RETURN;
+    }
+
+RETURN:
+    return $retval;
+}
+
+__END__
+
+=encoding utf8
+
+=head1 NAME
+
+acpkgman - AnyStor-E Package Manager
+
+=head1 SYNOPSIS
+
+=head1 DESCRIPTION
+
+=head2 STATUS
+
+=over
+
+=item SUCCESS 0
+
+=item ALREADY_DEPLOYED 1
+
+=item ALREADY_UPGRADED 2
+
+=item ALREADY_MIGRATED 3
+
+=item INVALID_PARAM 243
+
+=item REPO_FAILURE 244
+
+=item PKG_FAILURE 245
+
+=item LOG_FAILURE 246
+
+=item INTERRUPTED 247
+
+=item DEPLOY_FAILURE 248
+
+=item BACKUP_FAILURE 249
+
+=item STAGE_FAILURE 250
+
+=item UPGRADE_FAILURE 251
+
+=item DOWNGRADE_FAILURE 252
+
+=item MIGRATE_FAILURE 253
+
+=item RESTORE_FAILURE 254
+
+=back
+
+=head1 COPYRIGHT AND LICENSE
+
+Copyright 2015-2021. Gluesys Co., Ltd. All rights reserved.
+
+=head1 SEE ALSO
+
+=cut

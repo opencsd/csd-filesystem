@@ -1,0 +1,153 @@
+#!/usr/bin/perl -I/usr/gms/libgms
+
+use v5.14;
+
+use strict;
+use warnings;
+use utf8;
+
+our $AUTHORITY = 'cpan:gluesys';
+
+use GMS::Cluster::ClusterGlobal;
+use GMS::Common::Logger;
+use GMS::Common::OptArgs;
+
+#-----------------------------------------------------------------------------
+#   Main
+#-----------------------------------------------------------------------------
+my $parser;
+my %OPTS;
+
+catch_sig_warn(
+    datetime => 0,
+    procname => 0,
+    pid      => 0,
+    level    => 1,
+    filename => 0,
+    linenum  => 0
+);
+
+logmask(LOG_INFO);
+
+$parser = GMS::Common::OptArgs->new(
+    commands => [
+        {
+            path     => 'get',
+            desc     => 'Get status of the component',
+            callback => sub { exit get_status(); },
+        },
+        {
+            path     => 'set',
+            desc     => 'Set status of the component',
+            callback => sub { exit set_status(); },
+        }
+    ],
+    options => [
+        {
+            pinned   => 1,
+            short    => 'm',
+            long     => 'module',
+            desc     => 'Module(Component) name',
+            valdesc  => '<MODULE>',
+            callback => sub { $OPTS{MODULE} = shift; },
+        },
+        {
+            pinned   => 1,
+            short    => 's',
+            long     => 'status',
+            desc     => 'Status',
+            valdesc  => '<STATUS>',
+            callback => sub { $OPTS{STATUS} = shift; },
+        },
+        {
+            pinned   => 1,
+            short    => 'r',
+            long     => 'reason',
+            desc     => 'Reason why setting the status',
+            valdesc  => '<REASON>',
+            callback => sub { $OPTS{REASON} = shift; },
+        },
+        {
+            pinned   => 1,
+            short    => 'c',
+            long     => 'code',
+            desc     => 'Code',
+            valdesc  => '<CODE>',
+            callback => sub { $OPTS{CODE} = shift; },
+        }
+    ],
+    help_cmd  => 1,
+    help_lopt => 1,
+);
+
+$parser->parse(args => \@ARGV);
+
+exit 0;
+
+#---------------------------------------------------------------------------
+#   Callbacks
+#---------------------------------------------------------------------------
+sub get_status
+{
+    if (!defined($OPTS{MODULE}))
+    {
+        print "Required arguments: '-m'\n";
+        return 1;
+    }
+
+    my $cglobal = GMS::Cluster::ClusterGlobal->new();
+    my $status  = $cglobal->get_component_status($OPTS{MODULE});
+
+    if (defined($status) && defined($status->{status}))
+    {
+        print "$status->{status}\n";
+        return 0;
+    }
+    else
+    {
+        print "ERR\n";
+        return 1;
+    }
+}
+
+sub set_status
+{
+    if (!defined($OPTS{MODULE})
+        || !defined($OPTS{CODE})
+        || !defined($OPTS{REASON})
+        || !defined($OPTS{STATUS}))
+    {
+        print "Required arguments: '-m' '-c' '-r' '-s'\n";
+        return 1;
+    }
+
+    my $cglobal = GMS::Cluster::ClusterGlobal->new();
+    $cglobal->set_component_status(
+        component => $OPTS{MODULE},
+        status    => $OPTS{STATUS},
+        reason    => $OPTS{REASON},
+        code      => $OPTS{CODE}
+    );
+
+    return 0;
+}
+
+__END__
+
+=encoding utf8
+
+=head1 NAME
+
+statusctl - 컴포넌트의 상태를 get/set 할 수 있는 CLI
+
+=head1 SYNOPSIS
+
+=head1 DESCRIPTION
+
+=head1 COPYRIGHT AND LICENSE
+
+Copyright 2015-2021. Gluesys Co., Ltd. All rights reserved.
+
+=head1 SEE ALSO
+
+=cut

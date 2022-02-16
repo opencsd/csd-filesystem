@@ -1,0 +1,37 @@
+post:
+  x-mojo-to: 'Cluster::Event#event_count'
+  operationId: cluster_event_count
+  tags:
+    - cluster
+    - event
+  requestBody:
+    description: Request
+    required: false
+    content:
+      application/json:
+        schema:
+          type: object
+      application/x-www-form-urlencoded:
+        schema:
+          type: object
+  responses:
+    200:
+      description: number of events
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/DefaultResponse'
+              - type: object
+                properties:
+                  entity:
+                    type: object
+                    properties:
+                      info:
+                        type: integer
+                      warn:
+                        type: integer
+                      err:
+                        type: integer
+    401:
+      $ref: '#/components/responses/Unauthorized'

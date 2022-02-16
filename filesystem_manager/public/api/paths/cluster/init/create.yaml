@@ -1,0 +1,30 @@
+post:
+  x-mojo-to: 'Cluster::Initializer#create'
+  operationId: cluster_init_create
+  tags:
+    - cluster
+    - init
+  requestBody:
+    required: true
+    description: request
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            Cluster_Name:
+              type: string
+            Service_IP:
+              type: object
+              properties:
+                Start:
+                  type: string
+                End:
+                  type: string
+                Netmask:
+                  type: string
+  responses:
+    200:
+      description: This system is now the first node of the cluster.
+    401:
+      $ref: '#/components/responses/Unauthorized'

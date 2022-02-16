@@ -1,0 +1,34 @@
+post:
+  x-mojo-to: 'Cluster::Stage#list'
+  operationId: cluster_stage_list
+  tags:
+    - cluster
+    - stage
+  requestBody:
+    required: true
+    description: 'get the available stages'
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            Scope:
+              type: string
+          required:
+            - Scope
+  responses:
+    200:
+      description: the available stages for specified scope
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/DefaultResponse'
+              - type: object
+                properties:
+                  entity:
+                    type: array
+                    items:
+                      type: string
+    401:
+      $ref: '#/components/responses/Unauthorized'

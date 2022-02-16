@@ -1,0 +1,21 @@
+post:
+  x-mojo-to: 'Cluster::Initializer#deactivate'
+  operationId: cluster_init_deactivate
+  tags:
+    - cluster
+    - init
+  requestBody:
+    required: true
+    description: request
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            Master_storage:
+              type: string
+  responses:
+    200:
+      description: This system is deactivated on the cluster successfully.
+    401:
+      $ref: '#/components/responses/Unauthorized'

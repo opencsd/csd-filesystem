@@ -1,0 +1,67 @@
+post:
+  x-mojo-to: 'Cluster::Initializer#configure'
+  operationId: cluster_init_config
+  tags:
+    - cluster
+    - init
+  requestBody:
+    required: true
+    description: request
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            Network:
+              type: object
+              properties:
+                Management:
+                  type: object
+                  properties:
+                    Interface:
+                      type: string
+                    Ipaddr:
+                      anyOf:
+                        - nullable: true
+                        - type: string
+                    Netmask:
+                      anyOf:
+                        - nullable: true
+                        - type: string
+                    Gateway:
+                      anyOf:
+                        - nullable: true
+                        - type: string
+                Storage:
+                  type: object
+                  properties:
+                    Mode:
+                      type: integer
+                    Primary:
+                      anyOf:
+                        - nullable: true
+                        - type: string
+                    Slaves:
+                      type: array
+                      items:
+                        type: string
+                    Ipaddr:
+                      type: string
+                    Netmask:
+                      type: string
+                Service:
+                  type: object
+                  properties:
+                    Mode:
+                      type: integer
+                    Primary:
+                      type: string
+                    Slaves:
+                      type: array
+                      items:
+                        type: string
+  responses:
+    204:
+      description: This system is now ready to be a cluster node successfully.
+    401:
+      $ref: '#/components/responses/Unauthorized'

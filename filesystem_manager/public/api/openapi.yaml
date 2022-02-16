@@ -1,0 +1,28 @@
+openapi: 3.0.2
+
+info:
+  title: GMS API Reference
+  description: |
+    This is Gluesys Management System API reference.
+  contact:
+    email: dev3@gluesys.com
+# x-logo:
+#   url: http://www.gluesys.com/download/CI/Gluesys_CI_PNG.png
+#   backgroundColor: "#FFFFFF"
+  version: '3.0'
+
+servers:
+  - url: /api
+    description: GMS server
+
+paths:
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+security:
+  - bearerAuth: []

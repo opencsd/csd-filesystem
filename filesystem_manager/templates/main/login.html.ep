@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html>
+
+<style>
+@charset "utf-8";
+* {
+	margin:0;
+	padding:0;
+}
+
+form {
+	margin: 0;
+	padding: 0;
+}
+
+li img {
+	vertical-align: middle; /* for IE imge margin */
+}
+
+img, input.type-image {
+	border: 0 none;
+}
+
+span.button, img.button, a.button {
+	cursor: pointer;
+	vertical-align: middle;
+}
+
+.clear {
+	clear: both;
+}
+
+/** 로그인 이미지 **/
+
+/* 메인 이미지 */
+.contentLogo {
+	background: url("/main/images/<%=$lang%>/img_main.jpg") no-repeat;
+}
+
+/* 로그인 타이틀 */
+.loginTitle {
+	width: 210px;
+	height:200px;
+	background: url("/main/images/<%=$lang%>/bg_loginbox.gif") no-repeat;
+}
+
+/* 아이디 입력박스 */
+.input_ID {
+	background-image: url("/main/images/<%=$lang%>/img_id.gif");
+}
+
+/* 패스워드 입력 박스 */
+.input_PW {
+	background-image: url("/main/images/<%=$lang%>/img_pw.gif");
+}
+
+/* 카피라이트 */
+.login_button {
+	background: url("/main/images/<%=$lang%>/btn_login.png") no-repeat;
+}
+</style>
+
+<head>
+	<title><%= title %></title>
+
+	<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+	<meta http-equiv="cache-control" content="no-cache" />
+	<meta http-equiv="Pragma" content="no-cache" />
+	<meta http-equiv="Expires" content="-1" />
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+
+	<link rel="stylesheet" type="text/css" href="/main/css/login.css" />
+	<script type="text/javascript" src="/js/jquery/jquery-1.12.4.min.js"></script>
+	<script type="text/javascript" src="/js/libraries/common.js"></script>
+	<script type="text/javascript" src="/js/language/<%=$lang%>.js?_dc=<%=time%>"></script>
+	<script type="text/javascript" src="/js/libraries/jquery.common.js"></script>
+	<script type="text/javascript" src="/js/libraries/jquery.validation.js"></script>
+	<script type="text/javascript" src="/js/libraries/jquery.cookie.js"></script>
+	<script type="text/javascript" src="/js/libraries/jquery.select.js"></script>
+	<script type="text/javascript" src="/js/libraries/jquery.check.js"></script>
+	<script type="text/javascript" src="/js/libraries/jquery.text.js"></script>
+	<!--<script type="text/javascript" src="/js/libraries/sha512.js"></script>-->
+	<script type="text/javascript" src="/js/libraries/jwt-decode.js"></script>
+	<script type="text/javascript" src="/js/libraries/jsencrypt.js"></script>
+	<script type="text/javascript" src="/main/js/login.js?_dc=<%=time%>"></script>
+</head>
+
+<body>
+<div class="langSelect">
+	<select id="langSelectBox"
+		class="langSelectList"
+		style="width:120px; height:22px; vertical-align:middle;"
+		onChange="languageChange.setLanguage(this)"
+		selected="<%=$lang%>">
+		<option value="ko">한국어</option>
+		<option value="en">English</option>
+	</select>
+</div>
+
+<div class="logoImg"></div>
+
+<div class="loginContent">
+	<div class="contentLogo"></div>
+	<div class="contentMain">
+		<div class="loginTitle">
+			<form class="loginForm" name="loginForm" method='post'>
+				<dl><input type="text" class="input_ID" id="memberid" tabindex="1"></dl>
+				<dl><input type="password" class="input_PW" id="passwd" tabindex="2"></dl>
+				<div class="rememberSelect">
+%#					<input type="checkbox" name="remember" id="remember"> <%=lang('save_id')%>
+					<input type="checkbox" name="remember" id="remember"> ID 저장하기
+				</div>
+				<dl>
+					<div id="login_button" class="login_button" tabindex="3" onclick='login_submit();'></div><br>
+				</dl>
+			</form>
+		</div>
+	</div>
+	<div class="copyright"><%=$copyright%></div>
+</div>
+
+<div id="loginModal" class="modal">
+	<div id="loginLoading"></div>
+</div>
+
+<div id="loginError" class="checkErrorDefault"></div>
+
+</body>
+</html>

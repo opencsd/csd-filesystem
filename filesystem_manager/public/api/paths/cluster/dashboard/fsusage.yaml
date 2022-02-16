@@ -1,0 +1,11 @@
+post:
+  x-mojo-to: 'Cluster::Dashboard#fsusage'
+  operationId: cluster_dashboard_fsusage
+  tags:
+    - cluster
+    - dashboard
+  responses:
+    200:
+      $ref: '#/components/responses/FsUsages'
+    401:
+      $ref: '#/components/responses/Unauthorized'

@@ -1,0 +1,96 @@
+  -m                    Show IP and MAC.
+  -m IP                 Set IP (format: ###.###.###.###).
+  -a MAC                Set MAC (format: ##:##:##:##:##:##).
+  -k                    Show Subnet Mask.
+  -k Mask               Set Subnet Mask (format: ###.###.###.###).
+  -dhcp                 Get the DHCP status.
+  -dhcp on              Enable the DHCP.
+  -dhcp off             Disable the DHCP.
+  -g                    Show Gateway IP.
+  -g IP                 Set Gateway IP (format: ###.###.###.###).
+  -r                    BMC cold reset.
+                        option: -d | Detected IPMI device for BMC reset.
+  -garp on              Enable the Gratuitous ARP.
+  -garp off             Disable the Gratuitous ARP.
+  -fd                   Reset to the factory default.
+                        option: -d | Detected IPMI device for BMC reset.
+  -fdl                  Reset to the factory default. (Clean LAN)
+                        option: -d | Detected IPMI device for BMC reset.
+  -fde                  Reset to the factory default. (Clean FRU & LAN)
+                        option: -d | Detected IPMI device for BMC reset.
+  -ver                  Get Firmware revision.
+  -vlan                 Get VLAN status.
+  -vlan on <vlan tag>   Enable the VLAN and set the VLAN tag.
+                        If VLANtag is not given it uses previously saved value.
+  -vlan off             Disable the VLAN.
+  -selftest             Checking and reporting on the basic health of BMC.
+  -raw                  Send a RAW IPMI request and print response.
+                        Format: NetFn Cmd [Data1 ... DataN]
+  -fru info             Show FRU inventory area Info.
+  -fru list             Show all FRU values.
+  -fru cthelp           Show chassis type code.
+  -fru help             Show help of FRU Write.
+  -fru <field>          Show FRU field value.
+  -fru <field> <value>  Write FRU.
+  -fru 1m               Update Product-Manufacturer from DMITable to IPMI FRU.
+  -fru 1p               Update Product-Product Name from DMITable to IPMI FRU.
+  -fru 1s               Update Product-S/N from DMITable to IPMI FRU.
+  -fru 2m               Update Board-Manufacturer from DMITable to IPMI FRU.
+  -fru 2p               Update Board-Product Name from DMITable to IPMI FRU.
+  -fru 2s               Update Board-S/N from DMITable to IPMI FRU.
+  -fru 3s               Update Chassis-S/N from DMITable to IPMI FRU.
+  -fru backup <file>    Backup FRU to file <Binary format>.
+  -fru restore <file>   Restore FRU from file <Binary format>.
+  -fru tbackup <file>   Backup FRU to file <Text format>.
+  -fru trestore <file>  Restore FRU from file <Text format>.
+  -fru ver <v1> <v2>    Get/Set FRU version. (v1 v2 are BCD format)
+  -sel info             Show SEL info.
+  -sel list             Show SEL records.
+  -sel del              Delete all SEL records.
+  -sel raw              Show SEL raw data.
+  -sdr [full]           Show SDR records and reading.
+  -sdr del <sdr id>     Delete SDR record.
+  -sdr ver <v1> <v2>    Get/Set SDR version. (v1 v2 are BCD format)
+  -nm nmsdr             Display NM SDR.
+  -nm seltime           Get SEL time.
+  -nm deviceid          Get ME Device ID.
+  -nm reset             Reboots ME.
+  -nm reset2default     Force ME reset to Default.
+  -nm updatemode        Force ME to Update Mode.
+  -nm selftest          Get Self Test Results.
+  -nm listimagesinfo    List ME Images information.
+  -nm oemgetpower       OEM Power command for ME.
+  -nm oemgettemp        OEM Temp. command for ME.
+  -nm pstate            Get Max allowed CPU P-State.
+  -nm tstate            Get Max allowed CPU T-State.
+  -nm cpumemtemp        Get CPU/Memory temperature.
+  -nm hostcpudata       Get host CPU data.
+  -fan                  Get Fan Mode.
+  -fan <mode>           Set Fan Mode.
+  -pminfo [full]        Power supply PMBus health.
+  -psfruinfo            Power supply FRU health.
+  -psbbpinfo            Battery backup power status.
+  -autodischarge        Set auto discharge by days.
+   <module> <day>.      
+  -discharge <module>   Manually discharge battery.
+  -user list            List user privilege information.
+  -user help            Show user privilege code.
+  -user add <user id>   Add user.
+   <name> <password>    
+   <privilege>          
+  -user del <user id>   Delete user.
+  -user level <user id> Update user privilege.
+   <privilege>          
+  -user setpwd          Update user password.
+   <user id> <password> 
+  -conf upload <file>   Upload IPMI configuration form binary file.
+   <option>             option: -p | Bypass warning message.
+  -conf download <file> Download IPMI configuration to binary file.
+  -conf tupload <file>  Upload IPMI configuration from text file.
+   <option>             option: -p | Bypass warning message.
+  -conf tdownload       Download IPMI configuration to text file.
+   <file>               
+  -clrint               Clear chassis intrusion.
+  -reset <index>        Reset System and force to boot from device.
+  -soft <index>         Initiate a soft-shutdown for OS and force to boot from
+                        device.

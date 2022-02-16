@@ -1,0 +1,35 @@
+ADSAuth:
+  $ref: './ADSAuth.yaml'
+
+ADSConfig:
+  $ref: './ADSConfig.yaml'
+
+DefaultResponse:
+  $ref: './DefaultResponse.yaml'
+
+ClientConnection:
+  $ref: './ClientConnection.yaml'
+
+Event:
+  $ref: './Event.yaml'
+
+FsUsage:
+  $ref: './FsUsage.yaml'
+
+LDAPAuth:
+  $ref: './LDAPAuth.yaml'
+
+LDAPConfig:
+  $ref: './LDAPConfig.yaml'
+
+NodeStatus:
+  $ref: './NodeStatus.yaml'
+
+Stage:
+  $ref: './Stage.yaml'
+
+Status:
+  $ref: './Status.yaml'
+
+Task:
+  $ref: './Task.yaml'

@@ -1,0 +1,163 @@
+* {
+	margin:0;
+	padding:0;
+}
+
+body {
+	background-color: #EDEDED;
+	font-family: 돋움, tahoma, helvetica;
+	color: #333333;
+	font-size: 12px;
+	line-height: 18px
+}
+
+/* 전체 페이지 크기 */
+.loginContent {
+	width: 800px;
+	height: 425px;
+	position: absolute;
+	left: 50%;
+	top: 50%;
+	margin-top: -212px;
+	margin-left: -400px;
+}
+
+/* 로그인 전 로고 이미지 */
+.logoImg {
+	width:180px;
+	height: 40px;
+	background: url("/common/images/img_logo.png") no-repeat;
+	position: absolute;
+	left:50%;
+	top:50%;
+	margin-top:-250px;
+	margin-left: -400px;
+	float: right;
+	!important;
+}
+
+/* 언어 변경 리스트박스 */
+.langSelect {
+	width: 210px;
+	height: 30px;
+	position: absolute;
+	left: 50%;
+	top: 50%;
+	margin-top: -243px;
+	margin-left: 280px;
+	float: right
+	!important;
+}
+
+.langSelectList {
+	font-size: 9pt;
+	color: #000000;
+}
+
+/* 메인 이미지 */
+.contentLogo { width: 580px; height: 419px; }
+.contentLogo { float: left !important; }
+
+/* 로그인 폼 전체 */
+.contentMain { float: right; width: 210px; }
+
+/* 로드인 폼 */
+.loginForm { border-top: 40px; padding: 46px 20px 20px 20px; }
+.loginForm dl { padding-top:4px; }
+
+/* 아이디, 패스워드 입력박스, 입력박스 기본 설정 */
+.input_ID, .input_PW, .input_NONE {
+	width: 168px;
+	border: 1px solid #c3c3c3;
+	height: 20px;
+	background-position: 5px 5px;
+	background-repeat: no-repeat;
+}
+
+/* 아이디, 패스워드 입력박스 초기화 */
+.input_NONE { background: none !important; }
+
+/* 아이디 저장 */
+.rememberSelect { padding-top: 7px }
+
+/* 로그인 버튼 */
+.login_button { margin-top: 20px; width: 170px; height: 37px; cursor: pointer; }
+
+/* 카피라이트 */
+.copyright { float: left !important; padding-top: 10px; }
+
+/* 에러 텍스트 */
+.checkErrorDefault {
+	color: #000;
+	position: absolute;
+	left: 50%;
+	margin-top: -143px;
+	margin-left: -75px;
+	float: left !important;
+	width: 230px;
+	right: 100px;
+	border-radius: 6px;
+	padding: 8px 8px 8px 30px;
+}
+
+.IdcheckError {
+	background: url(/main/images/exclamation.gif) no-repeat;
+	background-position: 10px 10px;
+	top: 47%;
+	border-width: 1px;
+	border-style: solid;
+	border-color: red;
+	background-color:#fff;
+}
+
+.PwcheckError {
+	background: url(/main/images/exclamation.gif) no-repeat;
+	background-position: 10px 10px;
+	top: 51%;
+	border-width: 1px;
+	border-style: solid;
+	border-color: red;
+	background-color: #fff;
+}
+
+.checkError {
+	background: url(/main/images/exclamation.gif) no-repeat;
+	background-position: 10px 10px;
+	top: 62%;
+	border-width: 1px;
+	border-style: solid;
+	border-color: red;
+	background-color: #fff;
+}
+
+.loader {
+	background: url(/admin/images/loading.gif) no-repeat;
+	background-position: 10px 10px;
+	border-radius: 6px;
+	background-color: #fff;
+	border-width: 1px;
+	border-style: solid;
+	border-color: #3498db;
+	position: absolute;
+	top: 62%;
+	left: 50%;
+	right: 100px;
+	margin-top: -143px;
+	margin-left: -75px;
+	float: left !important;
+	width: 230px;
+	padding: 8px 8px 8px 30px;
+}
+
+.modal {
+	display: none; /* Hidden by default */
+	position: fixed; /* Stay in place */
+	z-index: 1; /* Sit on top */
+	left: 0;
+	top: 0;
+	width: 100%; /* Full width */
+	height: 100%; /* Full height */
+	overflow: auto; /* Enable scroll if needed */
+	background-color: rgb(0,0,0); /* Fallback color */
+	background-color: rgba(0,0,0,0.1); /* Black w/ opacity */
+}

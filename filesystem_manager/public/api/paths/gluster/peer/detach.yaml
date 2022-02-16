@@ -1,0 +1,31 @@
+post:
+  x-mojo-to: 'Cluster::Gluster#detach'
+  operationId: cluster_gluster_detach
+  tags:
+    - gluster
+  requestBody:
+    required: true
+    description: detach GlusterFS peer
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            IP:
+              type: string
+          required:
+            - IP
+  responses:
+    200:
+      description: Result
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/DefaultResponse'
+              - type: object
+                properties:
+                  entity:
+                    type: string
+    401:
+      $ref: '#/components/responses/Unauthorized'

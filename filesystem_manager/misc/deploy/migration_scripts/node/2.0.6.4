@@ -1,0 +1,27 @@
+#!/bin/sh
+
+[ -f /var/lib/gms/functions ] && . /var/lib/gms/functions
+
+log "INFO" "[NODE] Migration for 2.0.6.4"
+
+log "INFO" "[NODE] ------- Update netdata configuration ------"
+
+log "INFO" "[NODE] Step 1: Copy configuration file"
+
+cp -f /usr/gms/misc/etc/netdata/netdata.conf /opt/netdata/etc/netdata/
+
+if [ $? != 0 ]; then
+    log "ERR" "[NODE] Failed to copy configuration file"
+    exit $?
+fi
+
+log "INFO" "[NODE] Step 2: Restart netdata"
+
+supervisorctl restart netdata
+
+if [ $? != 0 ]; then
+    log "ERR" "[NODE] Failed to restart netdata"
+    exit $?
+fi
+
+log "INFO" "[NODE] Finished upgrading for 2.0.6.4"

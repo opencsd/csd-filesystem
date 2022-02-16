@@ -1,0 +1,9 @@
+description: present a connection with a client using filing protocol
+type: object
+properties:
+  key:
+    type: string
+  Client:
+    type: integer
+  Performance:
+    type: number

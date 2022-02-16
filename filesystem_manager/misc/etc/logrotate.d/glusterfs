@@ -1,0 +1,30 @@
+# Rotate client logs
+/var/log/glusterfs/*.log {
+    sharedscripts
+    daily
+    size 50M
+    rotate 30
+    missingok
+    compress
+    notifempty
+    dateext
+    postrotate
+        /usr/bin/killall -HUP glusterfs > /dev/null 2>&1 || true
+        /usr/bin/killall -HUP glusterd > /dev/null 2>&1 || true
+    endscript
+}
+
+# Rotate server logs
+/var/log/glusterfs/bricks/*.log {
+    sharedscripts
+    daily
+    size 50M
+    rotate 30
+    missingok
+    compress
+    notifempty
+    dateext
+    postrotate
+        /usr/bin/killall -HUP glusterfsd > /dev/null 2>&1 || true
+    endscript
+}

@@ -1,0 +1,311 @@
+#!/bin/sh
+
+[ -f /var/lib/gms/functions ] && . /var/lib/gms/functions
+
+export PERL5LIB=$PERL5LIB:/usr/gms/perl5/lib/perl5
+
+NODES=($(cat /etc/hosts \
+            | grep 'made by gms' \
+            | cut -d ' ' -f2 \
+            | grep -v -- '-m$'))
+
+function update_etcd_state
+{
+    log "INFO" "[NODE] Updating supervisord config..."
+
+    local STATE=$1
+    local NEW_CONF=
+    local FLAG=0
+
+    while read -r LINE
+    do
+        if [[ $FLAG -eq 1 && "$LINE" =~ ^\[.*\] ]]; then
+            FLAG=0
+        fi
+
+        # NOTE: 2018년 05월 16일 19:46: by P.G.
+        # 동일 이름의 항목이 있는 경우를 위해 플래그를 중복 검사
+        if [[ $FALG -eq 0 && "$LINE" =~ ^\[.*:etcd\] ]]; then
+            FLAG=1
+        fi
+
+        if [[ $FLAG -eq 1 ]]; then
+            if [[ "$LINE" =~ command=/usr/gms/bin/etcd$ ]]; then
+                LINE="command=/usr/gms/bin/etcd3"
+            elif [[ "$LINE" =~ --initial-cluster([[:space:]]|=) && \
+                    "$STATE" == "new" ]]; then
+                HOST="`hostname -s`"
+                STRG_IP="$(cat /etc/hosts | grep -E "\s+$HOST\s+" | cut -d ' ' -f 1)"
+                LINE="--initial-cluster $HOST=http://$STRG_IP:2380"
+            elif [[ "$LINE" =~ --initial-cluster-state([[:space:]]|=) ]]; then
+                LINE="--initial-cluster-state $STATE"
+            elif [[ "$LINE" =~ --advertise-client-urls ]]; then
+                LINE="${LINE//2380/2379}"
+            fi
+        fi
+
+        if [ "${LINE:0:1}" == "-" ]; then
+            LINE="    $LINE"
+        fi
+
+        printf -v NEW_CONF '%s\n%s' "$NEW_CONF" "$LINE"
+    done < /etc/supervisord.conf
+
+    echo "$NEW_CONF" > /etc/supervisord.conf
+
+    supervisorctl update
+
+    ETCD_STATUS=1
+    COUNT=30
+
+    while [ $COUNT -gt 0 ];
+    do
+        if [[ `supervisorctl status etcd` =~ RUNNING ]]; then
+            ETCD_STATUS=0
+            break
+        fi
+
+        COUNT=$((COUNT-1))
+        sleep 1;
+    done
+
+    if [ $ETCD_STATUS -ne 0 ]; then
+        log "INFO" "[NODE] Failed to start etcd"
+        return 1
+    fi
+
+    return 0
+}
+
+function join
+{
+    local IFS="$1"
+    shift
+    echo "$*"
+}
+
+function update_etcd_members
+{
+    log "INFO" "[NODE] Updating supervisord config..."
+
+    local MEMBERS=("${!1}")
+    local NEW_CONF=
+    local FLAG=0
+
+    while read -r LINE
+    do
+        if [[ $FLAG -eq 1 && "$LINE" =~ ^\[.*\] ]]; then
+            FLAG=0
+        fi
+
+        if [[ $FALG -eq 0 && "$LINE" =~ ^\[.*:etcd\] ]]; then
+            FLAG=1
+        fi
+
+        if [[ $FLAG -eq 1 ]]; then
+            if [[ "$LINE" =~ command=/usr/gms/bin/etcd$ ]]; then
+                LINE="command=/usr/gms/bin/etcd3"
+            elif [[ "$LINE" =~ --initial-cluster([[:space:]]|=) ]]; then
+                LINE="--initial-cluster $(join , ${MEMBERS[@]})"
+            fi
+        fi
+
+        if [ "${LINE:0:1}" == "-" ]; then
+            LINE="    $LINE"
+        fi
+
+        printf -v NEW_CONF '%s\n%s' "$NEW_CONF" "$LINE"
+    done < /etc/supervisord.conf
+
+    echo "$NEW_CONF" > /etc/supervisord.conf
+
+    supervisorctl update
+
+    ETCD_STATUS=1
+    COUNT=30
+
+    while [ $COUNT -gt 0 ];
+    do
+        if [[ `supervisorctl status etcd` =~ RUNNING ]]; then
+            ETCD_STATUS=0
+            break
+        fi
+
+        COUNT=$((COUNT-1))
+        sleep 1;
+    done
+
+    if [ $ETCD_STATUS -ne 0 ]; then
+        log "INFO" "[NODE] Failed to start etcd"
+        return 1
+    fi
+
+    return 0
+}
+
+function migrate_etcd
+{
+    # 1. backup etcd data with acetcdctl
+    log "INFO" "[NODE] Backing up etcd data..."
+
+    /usr/gms/bin/acetcdctl dump
+
+    if [ $? -ne 0 ]; then
+        log "ERR" "[NODE] Failed to dump etcd data with acetcdctl"
+        return 1
+    fi
+
+    STRG_IP=`cat /etc/hosts | grep -E " $NODE " | cut -d ' ' -f 1`
+
+    # 2. stop some services and delete all etcd data in all nodes of cluster
+    for NODE in ${NODES[@]};
+    do
+        ssh $NODE "supervisorctl stop gsm-publisher"
+
+        if [ $? -ne 0 ]; then
+            log 'ERR' "Failed to stop gsm-publisher: $NODE"
+            return 1
+        fi
+
+        ssh $NODE "supervisorctl stop etcd"
+
+        if [ $? -ne 0 ]; then
+            log 'ERR' "Failed to stop etcd: $NODE"
+            return 1
+        fi
+
+        ssh $NODE 'rm -rf /home/__internal/etcd'
+
+        if [ $? -ne 0 ]; then
+            log 'ERR' "Failed to delete etcd data: $NODE"
+            return 1
+        fi
+    done;
+
+    # 3. update supervisord configuration for etcd
+    #   - change --initial-cluster-state to 'new' on the first node
+    update_etcd_state 'new'
+
+    if [ $? -ne 0 ]; then
+        log 'ERR' "[NODE] Failed to update etcd state to 'new'"
+        return 1
+    fi
+
+    # 4. restore etcd data from the carbon copy of 1st step
+    DUMP_DIR="/var/lib/gms/etcd_dump"
+
+    for DUMP_FILE in `find "$DUMP_DIR" -type f`;
+    do
+        log 'INFO' "[NODE] Restoring etcd data: $DUMP_FILE"
+
+        /usr/gms/bin/acetcdctl set -d "${DUMP_FILE//$DUMP_DIR\/}" -f "$DUMP_FILE"
+
+        if [ $? -ne 0 ]; then
+            log 'ERR' "[NODE] Failed to set etcd data: $DUMP_FILE"
+        fi
+    done
+
+    # 5. restart etcd with updated supervisord configuration
+    #   - chagne --initial-cluser-state to 'existing' on the first node
+    update_etcd_state 'existing'
+
+    if [ $? -ne 0 ]; then
+        log 'ERR' "[NODE] Failed to update etcd state to 'existing'"
+        return 1
+    fi
+
+    return 0
+}
+
+function migrate_etcd_others
+{
+    # 1. add the node as new etcd cluster member by requesing /v2/members
+    #    POST API to the first node
+    local HOST="`hostname -s`"
+    local FIRST_HOST="${HOST/%-[[:digit:]]*/-1}"
+    local STRG_IP=`cat /etc/hosts | grep -E "[[:space:]]$HOST[[:space:]]" | cut -d ' ' -f 1`
+    local FIRST_STRG_IP=`cat /etc/hosts | grep -E "[[:space:]]$FIRST_HOST[[:space:]]" | cut -d ' ' -f 1`
+
+    curl http://$FIRST_STRG_IP:2379/v2/members -XPOST \
+        -H 'Content-Type: application/json' \
+        -d "{ \"peerURLs\" : [ \"http://$STRG_IP:2380\" ] }"
+
+    # 2. add earlier nodes into --initial-cluster as members of etcd cluster
+    local MEMBERS=()
+
+    for NODE in "${NODES[@]}";
+    do
+        if [ ${NODE##*-} -gt ${HOST##*-} ]; then
+            continue
+        fi
+
+        local NODE_STRG_IP=`cat /etc/hosts | grep -E "[[:space:]]$NODE[[:space:]]" | cut -d ' ' -f 1`
+        MEMBERS+=("$NODE=http://$NODE_STRG_IP:2380")
+    done
+
+    update_etcd_members MEMBERS[@]
+
+    if [ $? -ne 0 ]; then
+        log 'ERR' "[NODE] Failed to update etcd memeber"
+        return 1
+    fi
+
+    # 3. update supervisord configuration for etcd
+    #   - change --initial-cluster-state to 'existing'
+    update_etcd_state 'existing'
+
+    if [ $? -ne 0 ]; then
+        log 'ERR' "[NODE] Failed to update etcd state to 'existing'"
+        return 1
+    fi
+
+    return 0
+}
+
+log "INFO" "[NODE] Migration for 2.0.8.0"
+
+########## STEP1 : CTDB reload by hgichon ##################
+
+log "INFO" "[NODE] CTDB config path update from /mnt/private /home/__internal"
+
+. /etc/default/gluesys
+
+if [[ "`hostname -s`" =~ -1$ ]]; then
+    log "INFO" "[NODE] Migrating etcd from v2 to v3..."
+
+    migrate_etcd
+
+    if [ $? -ne 0 ]; then
+        log "ERR" "[NODE] Failed to migrate etcd data"
+        exit 1
+    fi
+elif [[ "`hostname -s`" =~ -(2|3)$ ]]; then
+    log "INFO" "[NODE] Migrating etcd from v2 to v3..."
+
+    migrate_etcd_others
+
+    if [ $? -ne 0 ]; then
+        log "ERR" "[NODE] Failed to migrate etcd data"
+        exit 1
+    fi
+fi
+
+/usr/gms/misc/mntgluster/gms_reloads/ctdb_reload
+
+if [ $? = 0 ]; then
+    log "INFO" "[NODE] CTDB config reload success"
+else
+    log "ERR" "[NODE] CTDB config reload failed"
+    exit 1
+fi
+
+service ctdb restart
+
+if [ $? = 0 ]; then
+    log "INFO" "[NODE] CTDB restart success"
+else
+    log "ERR" "[NODE] CTDB restart failed"
+    exit 1
+fi
+
+exit 0

@@ -1,0 +1,13 @@
+description: Stage schema
+type: object
+properties:
+  stage:
+    type: string
+  data:
+    nullable: true
+    description: Can be any value, including `null`.
+  proc:
+    nullable: true
+    type: object
+required:
+  - stage

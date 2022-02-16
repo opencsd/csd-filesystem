@@ -1,0 +1,30 @@
+#!/bin/sh
+
+[ -f /var/lib/gms/functions ] && . /var/lib/gms/functions
+
+log "INFO" "[NODE] Migration for 2.0.3.1"
+
+log "INFO" "[NODE] installing new locale table..."
+
+pushd /usr/gms/i18n
+
+make install
+
+popd
+
+if [ -f /usr/gms/misc/mds ]; then
+    log "INFO" "[NODE] move /usr/gms/misc/etc/supervisord.private.conf /etc/supervisord.conf"
+    mv -f /usr/gms/misc/etc/supervisord.private.conf /etc/supervisord.conf
+fi
+
+log "INFO" "[NODE] reloading supervisord..."
+
+killall supervisord
+
+sleep 1;
+
+supervisord
+
+log "INFO" "[NODE] reloading GMS..."
+
+/etc/init.d/gms reload

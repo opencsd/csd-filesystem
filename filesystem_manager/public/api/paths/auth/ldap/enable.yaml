@@ -1,0 +1,17 @@
+post:
+  x-mojo-to: 'Auth::LDAP#enable'
+  operationId: auth_ldap_enable
+  tags:
+    - auth
+  requestBody:
+    required: true
+    description: request
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/LDAPConfig'
+  responses:
+    204:
+      description: This machine has enabled.
+    401:
+      $ref: '#/components/responses/Unauthorized'

@@ -1,0 +1,626 @@
+#!/usr/bin/perl -I/usr/gms/libgms -I/usr/gms/lib
+
+use v5.14;
+
+use strict;
+use warnings;
+use utf8;
+
+our $AUTHORITY = 'cpan:gluesys';
+
+use Crypt::OpenSSL::RSA;
+use Data::Dumper;
+use GMS::Common::Logger;
+use GMS::Common::OptArgs;
+use JSON;
+use Mojo::Util qw/b64_encode b64_decode url_unescape/;
+use Mojo::UserAgent;
+use Try::Tiny;
+
+#-----------------------------------------------------------------------------
+#   Main
+#-----------------------------------------------------------------------------
+my $parser;
+my %OPTS;
+
+catch_sig_warn(
+    datetime => 0,
+    procname => 0,
+    pid      => 0,
+    level    => 1,
+    filename => 0,
+    linenum  => 0
+);
+
+logmask(LOG_INFO);
+
+$parser = GMS::Common::OptArgs->new(
+    commands => [
+        {
+            path     => 'config',
+            desc     => 'Config new node',
+            callback => sub { exit init_config(shift); },
+        },
+        {
+            path     => 'create',
+            desc     => 'Create new cluster',
+            callback => sub { exit init_create(shift); },
+        },
+        {
+            path     => 'register',
+            desc     => 'Add new node to cluster',
+            callback => sub { exit init_register(shift, shift); },
+        },
+        {
+            path     => 'activate',
+            desc     => 'Add new node to cluster',
+            callback => sub { exit init_activate(shift); },
+        },
+        {
+            path     => 'detach',
+            desc     => 'Remove a node from cluster',
+            callback => sub { exit init_detach(shift); },
+        }
+    ],
+    options => [
+        {
+            pinned   => 1,
+            short    => 'c',
+            long     => 'config',
+            desc     => 'configuration template file',
+            valdesc  => '<CONFIG>',
+            callback => sub { $OPTS{CONFIG} = shift; },
+        },
+    ],
+    help_cmd  => 1,
+    help_lopt => 1,
+);
+
+$parser->parse(args => \@ARGV);
+
+exit 0;
+
+#---------------------------------------------------------------------------
+#   Callbacks
+#---------------------------------------------------------------------------
+sub get_signing_key
+{
+    my %args = @_;
+
+    my $ua = Mojo::UserAgent->new();
+
+    my $tx = $ua->get("http://$args{target}");
+
+    my $signing_key;
+
+    foreach my $c (@{$tx->res->cookies})
+    {
+        if ($c->name eq 'signing_key')
+        {
+            $signing_key = b64_decode(url_unescape($c->value));
+            last;
+        }
+    }
+
+    if (!defined($signing_key))
+    {
+        print STDERR 'Failed to get signing key';
+        return;
+    }
+
+    return $signing_key;
+}
+
+sub init_config
+{
+    my $target = shift // '127.0.0.1';
+    my $args   = _get_config_conf();
+
+    if (!defined($args))
+    {
+        print STDERR "Failed to get configuration\n";
+        return 1;
+    }
+
+    my $ua = Mojo::UserAgent->new;
+
+    $ua->connect_timeout(0);
+    $ua->request_timeout(0);
+    $ua->inactivity_timeout(0);
+
+    my $signing_key = get_signing_key(target => $target);
+
+    my $rsa = Crypt::OpenSSL::RSA->new_public_key($signing_key);
+
+    $rsa->use_pkcs1_padding();
+
+    my $encrypted = $rsa->encrypt('admin');
+
+    $encrypted = b64_encode($encrypted);
+
+    my $tx = $ua->post(
+        "http://$target/api/manager/sign_in",
+        json => {
+            ID       => 'admin',
+            Password => $encrypted,
+        }
+    );
+
+    if (!$tx->res->is_success || substr($tx->res->code, 0, 1) != 2)
+    {
+        printf STDERR "%d: Failed to sign-in: %s\n",
+            $tx->res->code,
+            (ref($tx->res->json) eq 'HASH')
+            ? $tx->res->json->{msg}
+            : $tx->res->message;
+
+        return 1;
+    }
+
+    $OPTS{TOKEN} = (split(/\s*=\s*/, $tx->res->cookie('gms_token'), 2))[1];
+
+    $tx = $ua->post(
+        "http://$target/api/cluster/init/config",
+        {
+            'Authorization' => "Bearer $OPTS{TOKEN}",
+        },
+        json => $args,
+    );
+
+    if (!$tx->res->is_success || substr($tx->res->code, 0, 1) != 2)
+    {
+        printf STDERR "%d: Failed to config: %s\n",
+            $tx->res->code,
+            (ref($tx->res->json) eq 'HASH')
+            ? $tx->res->json->{msg}
+            : $tx->res->message;
+
+        return 1;
+    }
+
+    printf "Configuration has succeeded\n";
+
+    return 0;
+}
+
+sub init_create
+{
+    my $target = shift // '127.0.0.1';
+    my $args   = _get_init_conf('create');
+
+    if (!defined($args))
+    {
+        print STDERR "Failed to get configuration\n";
+        return 1;
+    }
+
+    my $ua = Mojo::UserAgent->new;
+
+    $ua->connect_timeout(0);
+    $ua->request_timeout(0);
+    $ua->inactivity_timeout(0);
+
+    my $signing_key = get_signing_key(target => $target);
+
+    my $rsa = Crypt::OpenSSL::RSA->new_public_key($signing_key);
+
+    $rsa->use_pkcs1_padding();
+
+    my $encrypted = $rsa->encrypt('admin');
+
+    $encrypted = b64_encode($encrypted);
+
+    my $tx = $ua->post(
+        "http://$target/api/manager/sign_in",
+        json => {
+            ID       => 'admin',
+            Password => $encrypted,
+        }
+    );
+
+    if (!$tx->res->is_success || substr($tx->res->code, 0, 1) != 2)
+    {
+        printf STDERR "%d: Failed to sign-in: %s\n",
+            $tx->res->code,
+            (ref($tx->res->json) eq 'HASH')
+            ? $tx->res->json->{msg}
+            : $tx->res->message;
+
+        return 1;
+    }
+
+    $OPTS{TOKEN} = (split(/\s*=\s*/, $tx->res->cookie('gms_token'), 2))[1];
+
+    $tx = $ua->post(
+        "http://$target/api/cluster/init/create",
+        {
+            'Authorization' => "Bearer $OPTS{TOKEN}",
+        },
+        json => {
+            Cluster_Name => $args->{cluster_name},
+            Service_IP   => {
+                Start   => $args->{service}{start},
+                End     => $args->{service}{end},
+                Netmask => $args->{service}{netmask},
+                Gateway => $args->{service}{gateway}
+            }
+        }
+    );
+
+    if (!$tx->res->is_success || substr($tx->res->code, 0, 1) != 2)
+    {
+        printf STDERR "%d: Failed to initialize: %s\n",
+            $tx->res->code,
+            (ref($tx->res->json) eq 'HASH')
+            ? $tx->res->json->{msg}
+            : $tx->res->message;
+
+        return 1;
+    }
+
+    printf "Initialization has succeeded\n";
+
+    return 0;
+}
+
+sub init_register
+{
+    my $target  = shift;
+    my $cluster = shift;
+
+    my $ua = Mojo::UserAgent->new;
+
+    $ua->connect_timeout(0);
+    $ua->request_timeout(0);
+    $ua->inactivity_timeout(0);
+
+    my $signing_key = get_signing_key(target => $target);
+
+    my $rsa = Crypt::OpenSSL::RSA->new_public_key($signing_key);
+
+    $rsa->use_pkcs1_padding();
+
+    my $encrypted = $rsa->encrypt('admin');
+
+    $encrypted = b64_encode($encrypted);
+
+    my $tx = $ua->post(
+        "http://$target/api/manager/sign_in",
+        json => {
+            ID       => 'admin',
+            Password => $encrypted,
+        }
+    );
+
+    if (!$tx->res->is_success || substr($tx->res->code, 0, 1) != 2)
+    {
+        printf STDERR "%d: Failed to sign-in: %s\n",
+            $tx->res->code,
+            (ref($tx->res->json) eq 'HASH')
+            ? $tx->res->json->{msg}
+            : $tx->res->message;
+
+        return 1;
+    }
+
+    $OPTS{TOKEN} = (split(/\s*=\s*/, $tx->res->cookie('gms_token'), 2))[1];
+
+    $tx = $ua->post(
+        "http://$target/api/cluster/init/join",
+        {
+            'Authorization' => "Bearer $OPTS{TOKEN}",
+        },
+        json => {
+            Cluster_IP => $cluster
+        }
+    );
+
+    if (!$tx->res->is_success || substr($tx->res->code, 0, 1) != 2)
+    {
+        printf STDERR "%d: Failed to join: %s\n",
+            $tx->res->code,
+            (ref($tx->res->json) eq 'HASH')
+            ? $tx->res->json->{msg}
+            : $tx->res->message;
+
+        return 1;
+    }
+
+    printf "Joining has succeeded\n";
+
+    return 0;
+}
+
+sub init_activate
+{
+    my $target = shift // '127.0.0.1';
+
+    if (defined($OPTS{CONFIG}))
+    {
+        my $args = _get_init_conf('join');
+
+        if (!defined($args))
+        {
+            print STDERR "Failed to get configuration\n";
+            return 1;
+        }
+
+        $target = $args->{target};
+    }
+
+    my $ua = Mojo::UserAgent->new;
+
+    $ua->connect_timeout(0);
+    $ua->request_timeout(0);
+    $ua->inactivity_timeout(0);
+
+    my $signing_key = get_signing_key(target => $target);
+
+    my $rsa = Crypt::OpenSSL::RSA->new_public_key($signing_key);
+
+    $rsa->use_pkcs1_padding();
+
+    my $encrypted = $rsa->encrypt('admin');
+
+    $encrypted = b64_encode($encrypted);
+
+    my $tx = $ua->post(
+        "http://$target/api/manager/sign_in",
+        json => {
+            ID       => 'admin',
+            Password => $encrypted,
+        }
+    );
+
+    if (!$tx->res->is_success || substr($tx->res->code, 0, 1) != 2)
+    {
+        printf STDERR "%d: Failed to sign-in: %s\n",
+            $tx->res->code,
+            (ref($tx->res->json) eq 'HASH')
+            ? $tx->res->json->{msg}
+            : $tx->res->message;
+
+        return 1;
+    }
+
+    $OPTS{TOKEN} = (split(/\s*=\s*/, $tx->res->cookie('gms_token'), 2))[1];
+
+    $tx = $ua->post(
+        "http://$target/api/cluster/init/expand",
+        {
+            'Authorization' => "Bearer $OPTS{TOKEN}",
+        },
+        json => {
+            Manage_IP => $target
+        }
+    );
+
+    if (!$tx->res->is_success || substr($tx->res->code, 0, 1) != 2)
+    {
+        printf STDERR "%d: Failed to activate: %s\n",
+            $tx->res->code,
+            (ref($tx->res->json) eq 'HASH')
+            ? $tx->res->json->{msg}
+            : $tx->res->message;
+
+        return 1;
+    }
+
+    printf "Activation has succeeded\n";
+
+    return 0;
+}
+
+sub init_detach
+{
+    my $target = shift // '127.0.0.1';
+
+    if (defined($OPTS{CONFIG}))
+    {
+        my $args = _get_init_conf('detach');
+
+        if (!defined($args))
+        {
+            print STDERR "Failed to get configuration\n";
+            return 1;
+        }
+
+        $target = $args->{target};
+    }
+
+    my $ua = Mojo::UserAgent->new;
+
+    $ua->connect_timeout(0);
+    $ua->request_timeout(0);
+    $ua->inactivity_timeout(0);
+
+    my $signing_key = get_signing_key(target => $target);
+
+    my $rsa = Crypt::OpenSSL::RSA->new_public_key($signing_key);
+
+    $rsa->use_pkcs1_padding();
+
+    my $encrypted = $rsa->encrypt('admin');
+
+    $encrypted = b64_encode($encrypted);
+
+    my $tx = $ua->post(
+        "http://$target/api/manager/sign_in",
+        json => {
+            ID       => 'admin',
+            Password => $encrypted,
+        }
+    );
+
+    if (!$tx->res->is_success || substr($tx->res->code, 0, 1) != 2)
+    {
+        printf STDERR "%d: Failed to sign-in: %s\n",
+            $tx->res->code,
+            (ref($tx->res->json) eq 'HASH')
+            ? $tx->res->json->{msg}
+            : $tx->res->message;
+
+        return 1;
+    }
+
+    $OPTS{TOKEN} = (split(/\s*=\s*/, $tx->res->cookie('gms_token'), 2))[1];
+
+    $tx = $ua->post(
+        "http://$target/api/cluster/init/detach",
+        {
+            'Authorization' => "Bearer $OPTS{TOKEN}",
+        },
+        json => {
+            Manage_IP => $target
+        }
+    );
+
+    if (!$tx->res->is_success || substr($tx->res->code, 0, 1) != 2)
+    {
+        printf STDERR "%d: Failed to detach: %s\n",
+            $tx->res->code,
+            (ref($tx->res->json) eq 'HASH')
+            ? $tx->res->json->{msg}
+            : $tx->res->message;
+
+        return 1;
+    }
+
+    printf "Detaching has succeeded\n";
+
+    return 0;
+}
+
+#-----------------------------------------------------------------------------
+#   Private
+#-----------------------------------------------------------------------------
+sub _get_init_conf
+{
+    my $conf_file = $OPTS{CONFIG};
+
+    if (!-e $conf_file)
+    {
+        print STDERR "No such file: $conf_file\n";
+        return;
+    }
+
+    my $conf_type = $_[0];
+
+    local $/;
+
+    my $fh;
+
+    if (!open($fh, '<', $conf_file))
+    {
+        print STDERR "Failed to open $conf_file: $!\n";
+        return;
+    }
+
+    my $initconf = undef;
+
+    try
+    {
+        $initconf = decode_json(<$fh>);
+    }
+    catch
+    {
+        print STDERR "Failed to decode $conf_file: $_\n";
+    }
+    finally
+    {
+        close($fh);
+    };
+
+    if (!(defined($initconf) && defined($initconf->{$conf_type})))
+    {
+        print STDERR "No such key: $conf_type in $conf_file\n";
+        return;
+    }
+
+    return $initconf->{$conf_type};
+}
+
+sub _get_config_conf
+{
+    my $conf_file = $OPTS{CONFIG};
+
+    if (!-e $conf_file)
+    {
+        print STDERR "No such file: $conf_file\n";
+        return;
+    }
+
+    local $/;
+
+    my $fh;
+
+    if (!open($fh, '<', $conf_file))
+    {
+        print STDERR "Failed to open $conf_file: $!\n";
+        return;
+    }
+
+    my $initconf = undef;
+
+    try
+    {
+        $initconf = decode_json(<$fh>);
+    }
+    catch
+    {
+        print "Failed to decode $conf_file: $_\n";
+    }
+    finally
+    {
+        close($fh);
+    };
+
+    my $network_conf = $initconf->{network};
+
+    return {
+        Network => {
+            Management => {
+                Interface => lc($network_conf->{management}{interface}),
+                Ipaddr    => $network_conf->{management}{ipaddr},
+                Netmask   => $network_conf->{management}{netmask},
+                Gateway   => $network_conf->{management}{gateway},
+            },
+            Service => {
+                Mode    => $network_conf->{service}{mode},
+                Primary => $network_conf->{service}{primary},
+                Slaves  => $network_conf->{service}{slaves}
+            },
+            Storage => {
+                Mode    => $network_conf->{storage}{mode},
+                Primary => $network_conf->{storage}{primary},
+                Slaves  => $network_conf->{storage}{slaves},
+                Ipaddr  => $network_conf->{storage}{ipaddr},
+                Netmask => $network_conf->{storage}{netmask},
+            }
+        },
+        Volume => {
+            Base_Pvs => $initconf->{pvs},
+            Tier_Pvs => []
+        }
+    };
+}
+
+__END__
+
+=encoding utf8
+
+=head1 NAME
+
+acinitctl - 클러스터 초기화와 관련된 생성/참여를 수행하는 도구
+
+=head1 SYNOPSIS
+
+=head1 DESCRIPTION
+
+=head1 COPYRIGHT AND LICENSE
+
+Copyright 2015-2021. Gluesys Co., Ltd. All rights reserved.
+
+=head1 SEE ALSO
+
+=cut

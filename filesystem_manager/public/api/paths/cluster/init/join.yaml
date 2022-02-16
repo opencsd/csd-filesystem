@@ -1,0 +1,25 @@
+post:
+  x-mojo-to: 'Cluster::Initializer#join'
+  operationId: cluster_init_join
+  tags:
+    - cluster
+    - init
+  requestBody:
+    required: true
+    description: request
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            Cluster_IP:
+              type: string
+            Manual_Active:
+              anyOf:
+                - nullable: true
+                - type: string
+  responses:
+    200:
+      description: This system is joined to the cluster successfully.
+    401:
+      $ref: '#/components/responses/Unauthorized'

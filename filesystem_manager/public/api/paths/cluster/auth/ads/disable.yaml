@@ -1,0 +1,11 @@
+post:
+  x-mojo-to: 'Cluster::Auth::ADS#disable'
+  operationId: cluster_auth_ads_disable
+  tags:
+    - auth
+    - cluster
+  responses:
+    204:
+      description: ADS authentication disabled successfully.
+    401:
+      $ref: '#/components/responses/Unauthorized'

@@ -1,0 +1,69 @@
+#!/bin/sh
+
+[ -f /var/lib/gms/functions ] && . /var/lib/gms/functions
+
+log "INFO" "[NODE] Migration for 2.0.3.2"
+
+log "INFO" "[NODE] replacing time configuration files..."
+
+# timezone
+pushd /usr/share/zoneinfo
+
+TZ=$(find * -type f -exec sh -c "diff -q /etc/localtime '{}' > /dev/null && echo {}" \; | grep -e '^America\|^Africa\|^Antarctia\|^Asia\|^Australia\|^Europe\|^Indian\|^Pacific')
+TZ=$(echo ${TZ} | awk '{print $1}')
+
+if [ -z ${TZ} ]; then
+    TZ='Asia/Seoul'
+    if [ -e /etc/localtime ]; then 
+        rm -rf /etc/localtime
+    fi
+    cp -af /usr/share/zoneinfo/Asia/Seoul /etc/localtime
+fi
+
+popd
+
+# ntp config files
+if [ -e /etc/cron.daily/ntpdate.sh ]; then
+    rm -f /etc/cron.daily/ntpdate.sh
+fi
+
+if [ -e /etc/ntp.conf ]; then
+    if [ -L /etc/ntp.conf ]; then
+        ulink /etc/ntp.conf
+    else
+        rm -f /etc/ntp.conf
+    fi
+fi
+
+cp -af /usr/gms/misc/etc/ntp.slave.conf /etc/ntp.conf
+
+echo "# List of servers used for initial synchronization." > /etc/ntp/step-tickers
+
+# reload time info
+log "INFO" "[NODE] reloading time configuration to Database..."
+
+source /usr/gms/t/jenkins_export
+
+perl -I/usr/gsm/lib -e "
+use System::Time;
+my \$time = System::Time->new();
+\$time->reload_timeinfo();
+" > /dev/null 2>&1
+
+cp -a /usr/gms/misc/etc/bash_completion.d /etc/
+
+if [ -f /usr/gms/misc/mds ]; then
+    log "INFO" "[NODE] reloading gsm-collector..."
+    supervisorctl restart gsm-collector
+
+    log "INFO" "[NODE] reloading gsm-notifier..."
+    supervisorctl restart gsm-notifier
+fi
+
+log "INFO" "[NODE] reloading gsm-publisher..."
+
+supervisorctl restart gsm-publisher
+
+log "INFO" "[NODE] reloading GMS..."
+
+/etc/init.d/gms reload

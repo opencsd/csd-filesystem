@@ -1,0 +1,10 @@
+post:
+  x-mojo-to: 'Auth::ADS#disable'
+  operationId: auth_ads_disable
+  tags:
+    - auth
+  responses:
+    204:
+      description: ADS authentication disabled successfully.
+    401:
+      $ref: '#/components/responses/Unauthorized'

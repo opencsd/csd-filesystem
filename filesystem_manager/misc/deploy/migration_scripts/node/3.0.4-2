@@ -1,0 +1,34 @@
+#!/bin/sh
+
+[ -f /var/lib/gms/functions ] && . /var/lib/gms/functions
+
+log "INFO" "[NODE] Migration for 3.0.4-2"
+
+log "INFO" "[NODE] Reloading block device info..."
+
+perl -I/usr/gms/libgms -MBlock::BlockCtl -e 'Block::BlockCtl->new->get();'
+
+if [ $? != 0 ]; then
+    log "ERR" "[NODE] Failed to reload block device info"
+    exit 255
+fi
+
+log "INFO" "[NODE] Migration is done"
+
+perl -e "
+#!/bin/perl
+use strict;
+use warnings;
+
+my \$command='lvmconfig \
+    --type current --mergedconfig \
+    --config=global/thin_check_options=\'\"--skip-mappings\"\' \
+    --withcomment -f /etc/lvm/lvm.conf';
+system(\$command);
+"
+
+if [ $? != 0 ]; then
+  log "ERR" "[NODE] Failed to lvmconfig Failed to thin_check_option" 
+fi
+
+log "INFO" "[NODE] Migration is done"

@@ -1,0 +1,219 @@
+#!/bin/sh
+
+[ -f /var/lib/gms/functions ] && . /var/lib/gms/functions
+
+log "INFO" "[CLUSTER] migration for 2.0.5.2"
+
+# GSM table migrating for events/tasks
+log "INFO" "[CLUSTER] migrating GSM tables..."
+
+mysql -u root -pgluesys\!\! -e "
+    CREATE DATABASE IF NOT EXISTS gms;
+    GRANT ALL PRIVILEGES ON gms.* TO 'gluesys'@'%' IDENTIFIED BY 'gluesys!!';
+    GRANT ALL PRIVILEGES ON gms.* TO 'gluesys'@'localhost' IDENTIFIED BY 'gluesys!!';
+    ALTER TABLE gsm.events MODIFY code VARCHAR(255);
+    ALTER TABLE gsm.tasks MODIFY code VARCHAR(255);
+    CREATE TABLE IF NOT EXISTS gms.mysql_alive_chk (
+        \`hostname\` varchar(255)
+    );
+    CREATE TABLE IF NOT EXISTS gms.gms_lock_log (
+        \`lk_name\`    VARCHAR(64) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL,
+        \`owner_node\` VARCHAR(32) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL,
+        \`owner_pid\`  VARCHAR(8)  CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL,
+        \`action\`     VARCHAR(32) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL,
+        \`status\`     VARCHAR(32) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL,
+        \`local_time\` INT UNSIGNED NOT NULL,
+        \`time\`       TIMESTAMP
+    );
+    DROP TABLE IF EXISTS gsm.mysql_alive_chk;
+    DROP TABLE IF EXISTS gsm.gms_lock_log;"
+
+if [ $? -ne 0 ]; then
+    log "ERR" "[CLUSTER] Failed to migrate GSM table"
+    exit $?
+fi
+
+log "INFO" "[CLUSTER] re-configure gluster snapshot configuration ..."
+
+# gluster snapshot config
+auto_del=$(gluster snapshot config  | grep auto-delete | awk '{print $3}') 
+[[ $auto_del != 'disable' ]] && yes | gluster snapshot config auto-delete disable
+yes | gluster snapshot config snap-max-hard-limit 256
+yes | gluster snapshot config snap-max-soft-limit 100
+
+# etcd migrations
+log "INFO" "[CLUSTER] migrating the snapshot and snapshot scheduling information ..."
+
+. /etc/default/gluesys
+
+perl -I/usr/gsm/lib -I/usr/gms/lib -e "
+use Try::Tiny;
+use Data::Dumper;
+use JSON qw(decode_json encode_json);
+
+use Cluster::Volume::Gluster::Schedule;
+
+use Cluster::MDSAdapter;
+my \$adp = Cluster::MDSAdapter->new();
+
+my \$snap_conf = \`gluster snapshot config | head -6 | grep snap-max-hard-limit\`;
+\$snap_conf = [ split /\s:\s/, \$snap_conf ];
+my \$snap_max_hard_limit = \$snap_conf->[1];
+\$snap_max_hard_limit =~ s/\n//g;
+
+my \$vol_list = \`gluster vol list | grep -v private\`; 
+\$vol_list    = [ split /\n/, \$vol_list ];
+
+# SnapshotInfo to GlusterSnapshotInfo
+my \$snaps  = read_data('SnapshotInfo');
+
+if (@{\$vol_list} && defined \$snaps && ref \$snaps eq 'HASH' && keys %{\$snaps})
+{
+    my %tmp = ();
+
+    for my \$vol (@{\$vol_list})
+    {
+        \$tmp{\$_} = \$snaps->{\$vol}{\$_} for (keys %{\$snaps->{\$vol}});
+    }
+
+    for my \$id (keys %tmp)
+    {
+        if (defined \$tmp{\$id}->{Created_By} && \$tmp{\$id}->{Created_By} ne '')
+        {
+            \$tmp{\$id}->{Snapshot_Desc} = \$tmp{\$id}->{Created_By};
+            next;
+        }
+        \$tmp{\$id}->{Created_By} = undef;
+        \$tmp{\$id}->{Snapshot_Desc} = undef;
+    }
+
+    \$adp->set_conf('GlusterSnapshotInfo', \%tmp);
+}
+
+\$adp->set_conf('SnapshotInfo', {});
+
+
+## ScheduleInfo 
+my \$scheds = read_data('ScheduleInfo');
+
+if (@{\$vol_list} && defined \$scheds && ref \$scheds eq 'HASH' && keys %{\$scheds})
+{
+    my \$snaps = \$adp->get_conf('GlusterSnapshotInfo');
+
+    for my \$id (keys %{\$scheds})
+    {
+        \$scheds->{\$id}{Sched_Name} = \$id;
+        \$scheds->{\$id}{Sched_ID} = \$id;
+    }
+    
+    for my \$vol (@{\$vol_list})
+    {
+        my \$total_snap_limit = 0;
+    
+        my \$scheds_on_same_vol = [ map { \$_ } grep { \$scheds->{\$_}{Volume_Name} eq \$vol } keys %{\$scheds} ];
+    
+        for my \$id (@{\$scheds_on_same_vol})
+        {
+            \$total_snap_limit += int(\$scheds->{\$id}{Snapshot_Limit});
+        }
+    
+        if (@{\$scheds_on_same_vol} && \$total_snap_limit > int(\$snap_max_hard_limit))
+        {
+    	    for my \$id (@{\$scheds_on_same_vol})
+    	    {
+    	        \$scheds->{\$id}{Snapshot_Limit} = grep { \$snaps->{\$_}{Created_By} eq \$id } keys %{\$snaps};
+    	    }
+        }
+    }
+
+    \$adp->set_conf('ScheduleInfo', \$scheds);
+}
+
+my \$sched_ctl = Cluster::Volume::Gluster::Schedule->new();
+\$sched_ctl->reload_snapshot_cnt();
+
+
+sub dump_data_to_file_once
+{
+    my \$data = shift;
+    my \$file = shift;
+
+    return if (-f \$file);
+
+    my \$fh = undef;
+    my \$written = try 
+    {
+        open(\$fh, '>:encoding(UTF-8)', \$file) 
+            or die \"Can't open file: \$file\";
+
+        \$data = encode_json(\$data);
+        print \$fh \$data;
+    } 
+    catch
+    { 
+        return undef;
+    };
+
+    close (\$fh) if (defined \$fh);
+    
+    return \$written;
+}
+
+sub read_from_file
+{
+    my \$file = shift;
+    return undef if (!-f \$file);
+
+    my \$fh = undef;
+    my \$read = try 
+    {
+        open(\$fh, '<:encoding(UTF-8)', \$file) 
+            or die \"Can't open file: \$file\";
+
+        my @tmp = <\$fh>;
+        return decode_json(join /\n/, @tmp);
+    } 
+    catch
+    { 
+        return undef;
+    };
+
+    close (\$fh) if (defined \$fh);
+
+    return \$read;
+}
+
+sub read_data
+{
+    my \$dbname = shift;
+
+    my \$adp = Cluster::MDSAdapter->new();
+    my \$data = \$adp->get_conf(\$dbname);
+
+    if (-f '/tmp/' . \$dbname || !keys %{\$data})
+    {
+        my \$tmp = read_from_file('/tmp/' . \$dbname);
+        if (defined \$tmp && ref \$tmp eq 'HASH' && keys %{\$tmp})
+        {
+            \$data = \$tmp;
+        }
+    }
+
+    dump_data_to_file_once(\$data, '/tmp/' . \$dbname);
+
+    return \$data
+}
+"
+
+# removing useless volume pool tasks
+log "INFO" "[CLUSTER] removing useless tasks ..."
+
+perl -I/usr/gsm/lib -I/usr/gms/lib -e "
+use Cluster::MDSAdapter;
+my \$adp = Cluster::MDSAdapter->new();
+\$adp->execute_query(
+    db => 'gsm', query => \"delete from tasks where tasks.code like 'VOLUME_POOL_VG_%_USAGE_HI%'\",
+);
+"
+
+log "INFO" "[CLUSTER] Migration is done"

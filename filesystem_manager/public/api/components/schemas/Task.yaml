@@ -1,0 +1,37 @@
+description: present an event
+type: object
+properties:
+  Beep_count:
+    type: integer
+  Beep_latest:
+    type: integer
+  Category:
+    type: string
+  Code:
+    type: string
+  Details:
+    anyOf:
+      - nullable: true
+      - type: string
+      - type: object
+  Id:
+    type: integer
+  Level:
+    type: string
+  Message:
+    type: string
+  Notified:
+    type: integer
+  Progress:
+    type: number
+  Quiet:
+    type: integer
+  Scope:
+    type: string
+  Start:
+    type: string
+  Finish:
+    nullable: true
+    type: string
+  Type:
+    type: string

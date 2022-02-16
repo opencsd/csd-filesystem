@@ -1,0 +1,168 @@
+############################################################################
+# Authentication API
+############################################################################
+/auth/ads/disable:
+  $ref: './auth/ads/disable.yaml'
+
+/auth/ads/enable:
+  $ref: './auth/ads/enable.yaml'
+
+/auth/ads/info:
+  $ref: './auth/ads/info.yaml'
+
+/auth/ldap/disable:
+  $ref: './auth/ldap/disable.yaml'
+
+/auth/ldap/enable:
+  $ref: './auth/ldap/enable.yaml'
+
+/auth/ldap/info:
+  $ref: './auth/ldap/info.yaml'
+
+############################################################################
+# Cluster - Authentication API
+############################################################################
+
+/cluster/auth/ads/disable:
+  $ref: './cluster/auth/ads/disable.yaml'
+
+/cluster/auth/ads/enable:
+  $ref: './cluster/auth/ads/enable.yaml'
+
+/cluster/auth/ads/info:
+  $ref: './cluster/auth/ads/info.yaml'
+
+/cluster/auth/ldap/disable:
+  $ref: './cluster/auth/ldap/disable.yaml'
+
+/cluster/auth/ldap/enable:
+  $ref: './cluster/auth/ldap/enable.yaml'
+
+/cluster/auth/ldap/info:
+  $ref: './cluster/auth/ldap/info.yaml'
+
+############################################################################
+# Cluster - Dashboard API
+############################################################################
+
+/cluster/dashboard/clientgraph:
+  $ref: './cluster/dashboard/clientgraph.yaml'
+
+/cluster/dashboard/fsusage:
+  $ref: './cluster/dashboard/fsusage.yaml'
+
+############################################################################
+# Cluster - Event API
+############################################################################
+
+/cluster/event/count:
+  $ref: './cluster/event/count.yaml'
+
+/cluster/event/delete:
+  $ref: './cluster/event/delete.yaml'
+
+/cluster/event/list:
+  $ref: './cluster/event/list.yaml'
+
+############################################################################
+# Cluster - Initialization/Expansion API
+############################################################################
+
+/cluster/init/activate:
+  $ref: './cluster/init/activate.yaml'
+
+/cluster/init/config:
+  $ref: './cluster/init/config.yaml'
+
+/cluster/init/contract:
+  $ref: './cluster/init/contract.yaml'
+
+/cluster/init/create:
+  $ref: './cluster/init/create.yaml'
+
+/cluster/init/deactivate:
+  $ref: './cluster/init/deactivate.yaml'
+
+/cluster/init/expand:
+  $ref: './cluster/init/expand.yaml'
+
+/cluster/init/join:
+  $ref: './cluster/init/join.yaml'
+
+/cluster/init/register:
+  $ref: './cluster/init/register.yaml'
+
+/cluster/init/unregister:
+  $ref: './cluster/init/unregister.yaml'
+
+############################################################################
+# Cluster - MDS API
+############################################################################
+
+/cluster/mds/reload:
+  $ref: './cluster/mds/reload.yaml'
+
+############################################################################
+# Cluster - Common API
+############################################################################
+
+/cluster/nodes:
+  $ref: './cluster/nodes.yaml'
+
+/cluster/status:
+  $ref: './cluster/status.yaml'
+
+############################################################################
+# Cluster - Stage API
+############################################################################
+
+/cluster/stage/get:
+  $ref: './cluster/stage/get.yaml'
+
+/cluster/stage/info:
+  $ref: './cluster/stage/info.yaml'
+
+/cluster/stage/list:
+  $ref: './cluster/stage/list.yaml'
+
+/cluster/stage/set:
+  $ref: './cluster/stage/set.yaml'
+
+############################################################################
+# Cluster - Task API
+############################################################################
+
+/cluster/task/count:
+  $ref: './cluster/task/count.yaml'
+
+/cluster/task/list:
+  $ref: './cluster/task/list.yaml'
+
+############################################################################
+# GlusterFS API
+############################################################################
+
+/gluster/peer/detach:
+  $ref: './gluster/peer/detach.yaml'
+
+/gluster/peer/probe:
+  $ref: './gluster/peer/probe.yaml'
+
+/gluster/restart:
+  $ref: './gluster/restart.yaml'
+
+/gluster/start:
+  $ref: './gluster/start.yaml'
+
+/gluster/stop:
+  $ref: './gluster/stop.yaml'
+
+############################################################################
+# Manager API
+############################################################################
+
+/manager/sign_in:
+  $ref: './manager/sign_in.yaml'
+
+/manager/sign_out:
+  $ref: './manager/sign_out.yaml'

@@ -1,0 +1,9 @@
+#!/bin/sh
+
+[ -f /var/lib/gms/functions ] && . /var/lib/gms/functions
+
+log "INFO" "[NODE] Migration for 2.0.4.3"
+
+log "INFO" "[NODE] adapt new lighttpd configuration..."
+
+service lighttpd restart

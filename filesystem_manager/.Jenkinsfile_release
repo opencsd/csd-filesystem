@@ -1,0 +1,316 @@
+#!groovy
+
+/*
+ * The GNU General Public License Version 3
+ *
+ * Copyright 2015-2021. Gluesys. Co., Ltd. All rights reserved.
+ */
+
+/*
+ * to use getEnvironment() method, we need to approve it with in jenkins.
+ * URL: http://<JENKINS-URL>/scriptApproval
+ */
+def printParams()
+{
+    env.getEnvironment().each { name, value -> println "EnvVar => $name: $value" }
+}
+
+printParams()
+
+pipeline
+{
+    agent {
+        node {
+            label 'VM7SET6'
+            customWorkspace '/usr/gms'
+        }
+    }
+
+    parameters {
+        string(
+            name: 'gmsBranch',
+            defaultValue: 'master',
+            description: 'GMS branch name')
+        string(
+            name: 'girasoleBranch',
+            defaultValue: 'master',
+            description: 'Girasole branch name')
+        string(
+            name: 'eflowdBranch',
+            defaultValue: 'master',
+            description: 'eflowd branch name')
+        booleanParam(
+            name: 'skipTests',
+            defaultValue: false,
+            description: 'skip all test')
+        booleanParam(
+            name: 'DoUpgradeTest',
+            defaultValue: true,
+            description: 'perform upgrade test')
+        booleanParam(
+            name: 'VMSnapshotCreate',
+            defaultValue: true,
+            description: 'create VM Snapshot for this release')
+        booleanParam(
+            name: 'stopSlavesAfterDone',
+            defaultValue: false,
+            description: 'stop all slave VMs after this job finished')
+        string(
+            name: 'gmsTag',
+            defaultValue: '',
+            description: 'create new GMS tag if this job succeeded')
+    }
+
+    options {
+        timestamps()
+        ansiColor('xterm')
+        buildDiscarder(logRotator(numToKeepStr: '30', artifactNumToKeepStr: '30'))
+    }
+
+    stages {
+        stage('Preparation') {
+            steps {
+                echo 'Preparing...'
+
+                dir('/usr/jenkins') {
+                    git \
+                        branch: 'master', \
+                        credentialsId: 'cf7ac1a3-e88a-4977-b094-1bb5c6e0c9d1', \
+                        url: 'http://gitlab.gluesys.com/gitlab/ac2/jenkins.git'
+
+                    sh 'bash +x scripts/prepare.sh'
+                }
+
+                script {
+                    env.CI_SRC = '/usr/jenkins'
+                }
+            }
+        }
+
+        /*
+        stage('Checkout') {
+            steps {
+                echo 'Checking out...'
+
+                sh 'git config --global user.email jenkins@gluesys.com'
+                sh 'git config --global user.name  Gluesys Jenkins'
+
+                checkout([
+                    $class: 'GitSCM',
+                    branches: [
+                        [ name: "${params.gmsBranch}"]
+                    ],
+                    extensions: [
+                        [ $class: 'CleanBeforeCheckout' ],
+                        [ $class: 'WipeWorkspace' ]
+                    ],
+                    doGenerateSubmoduleConfigurations: false,
+                    submoduleCfg: [],
+                    userRemoteConfigs: [
+                        [
+                            name: 'origin',
+                            credentialsId: 'cf7ac1a3-e88a-4977-b094-1bb5c6e0c9d1',
+                            url: 'git@gitlab.gluesys.com:ac2/GMS.git'
+                        ]
+                    ]
+                ])
+            }
+        }
+        */
+
+        stage('Girasole') {
+            steps {
+                echo "Girasole test start"
+
+                build \
+                    job: 'Girasole', \
+                    parameters: [ \
+                        string(name: 'girasoleBranch', value: "${params.girasoleBranch}"), \
+                        string(name: 'gmsBranch', value: "${params.gmsBranch}"), \
+                        string(name: 'eflowdBranch', value: "${params.eflowdBranch}"), \
+                        booleanParam(name: 'skipTests', value: "${params.skipTests}"), \
+                        booleanParam(name: 'integrationTest', value: false) \
+                    ], \
+                    wait: true
+            }
+
+            post {
+                always {
+                    step([
+                        $class: 'CopyArtifact',
+                        filter: 'rpmbuild/RPMS/x86_64/*.rpm',
+                        projectName: 'Girasole',
+                        selector: [
+                            $class: 'StatusBuildSelector',
+                            stable: false
+                        ],
+                        flatten: true,
+                        target: './other_job_rpm'
+                    ])
+                }
+            }
+        }
+
+        stage('eflowd') {
+            steps {
+                echo "eflowd test start"
+
+                build \
+                    job: 'Eflowd', \
+                    parameters: [ \
+                        string(name: 'girasoleBranch', value: "${params.girasoleBranch}"), \
+                        string(name: 'eflowdBranch', value: "${params.eflowdBranch}"), \
+                        string(name: 'gmsBranch', value: "${params.gmsBranch}"), \
+                        booleanParam(name: 'skipTests', value: ${params.skipTests}), \
+                        booleanParam(name: 'integrationTest', value: false) \
+                    ], \
+                    wait: true
+            }
+
+            post {
+                always {
+                    step([
+                        $class: 'CopyArtifact',
+                        filter: 'rpmbuild/RPMS/x86_64/*.rpm',
+                        projectName: 'Eflowd',
+                        selector: [
+                            $class: 'StatusBuildSelector',
+                            stable: false
+                        ],
+                        flatten: true,
+                        target: './other_job_rpm'
+                    ])
+                }
+            }
+        }
+
+        stage('Building') {
+            steps {
+                echo 'Building...'
+
+                script {
+                    env.GMS_REPO   = 'ac2/GMS'
+                    env.GMS_BRANCH = "${params.gmsBranch}"
+                }
+
+                dir('/usr/jenkins') {
+                    sh "bash +x scripts/packaging.sh"
+                }
+
+                /*
+                 * It is tricky way due to limitation of the archiveArtifacts
+                 * method that cannot archive artifacts with absolute path
+                 */
+                script {
+                    def artifact_dir = "/tmp/ANYSTOR-E/${env.JOB_NAME}/${env.BUILD_NUMBER}/rpmbuild"
+
+                    sh "[ ! -d rpmbuild/RPMS ]  && mkdir -p rpmbuild/RPMS";
+                    sh "[ ! -d rpmbuild/SRPMS ] && mkdir -p rpmbuild/SRPMS";
+
+                    sh "cp -af ${artifact_dir}/RPMS  ${WORKSPACE}/rpmbuild"
+                    sh "cp -af ${artifact_dir}/SRPMS ${WORKSPACE}/rpmbuild"
+                }
+            }
+        }
+
+        stage('Testing') {
+            when {
+                expression { params.skipTests != true }
+            }
+
+            steps {
+                echo 'Testing...'
+
+                /*
+                dir('/usr/jenkins') {
+                    sh "bash +x scripts/mergetest.sh ${params.stopSlavesAfterJob ? "" : "NONSTOP"}"
+                }
+                */
+            }
+        }
+
+        stage('Upgrade Testing') {
+            when {
+                expression { params.DoUpgradeTest == true }
+            }
+
+            steps {
+                echo 'Upgrade Testing...'
+
+                /*
+                dir('/usr/jenkins') {
+                    sh "bash +x scripts/release/upgrade.sh --version ${params.gmsTag}"
+                }
+                */
+            }
+        }
+
+        stage('Tagging') {
+            when { tag '*' }
+
+            steps {
+                echo "gmsTag: ${params.gmsTag}"
+                echo "gmsTag: ${env.TAGNAME}"
+            }
+        }
+
+        stage('VM Snapshotting') {
+            when {
+                expression { params.VMSnapshotCreate == true }
+            }
+
+            steps {
+                echo 'Make VM to Create Snapshot'
+
+                dir('/usr/jenkins') {
+                    sh "bash +x scripts/release/skipmergetest.sh ${params.stopSlavesAfterJob ? "" : "NONSTOP"}"
+                }
+            }
+        }
+
+        stage('Reporting') {
+            steps {
+                echo 'Collecting and summarizing test results...'
+            }
+        }
+
+        stage('Repository Update') {
+            when {
+                expression {
+                    currentBuild.currentResult == 'SUCCESS'
+                }
+            }
+
+            steps {
+                echo 'Updating package repository...'
+
+                /*
+                script {
+                    def artifact_dir = "/tmp/ANYSTOR-E/${env.JOB_NAME}/${env.BUILD_NUMBER}"
+
+                    sh "ssh root@192.168.3.4 'cp -rLf /tank2/ac2repo/anystor-e/3.0 /tank2/ac2repo/anystor-e/${params.gmsTag}'"
+                    sh "scp ${artifact_dir}/release/anystor-e/gms/other_job_rpm/*.rpm root@192.168.3.4:/tank2/ac2repo/anystor-e/${params.gmsTag}/os/x86_64/Packages/"
+                    sh "scp ${artifact_dir}/rpmbuild/RPMS/x86_64/*.rpm root@192.168.3.4:/tank2/ac2repo/anystor-e/${params.gmsTag}/os/x86_64/Packages/"
+                    sh "ssh root@192.168.3.4 'createrepo /tank2/ac2repo/anystor-e/${params.gmsTag}/os/x86_64'"
+                    sh "ssh root@192.168.3.4 'rm -f /tank2/ac2repo/anystor-e/3.0'"
+                    sh "ssh root@192.168.3.4 'ln -sf /tank2/ac2repo/anystor-e/${params.gmsTag} /tank2/ac2repo/anystor-e/3.0'"
+                }
+                */
+            }
+        }
+    }
+
+    post {
+        always {
+            //sh 'rm -rf upstream'
+            sh "rm -f ${WORKSPACE}/*.rpm"
+        }
+        success {
+            archiveArtifacts artifacts: "rpmbuild/RPMS/x86_64/*.rpm", fingerprint: true
+            archiveArtifacts artifacts: "rpmbuild/SRPMS/*.rpm", fingerprint: true
+            archiveArtifacts artifacts: "other_job_rpm/*.rpm", fingerprint: true
+            junit allowEmptyResults: true, testResults: 'result.xml'
+        }
+    }
+}
+

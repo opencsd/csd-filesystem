@@ -1,0 +1,25 @@
+post:
+  x-mojo-to: 'Etcd#create_cluster'
+  operationId: etcd_create_cluster
+  tags:
+      - etcd
+  requestBody:
+    required: true
+    description: 'Create new etcd cluster'
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            Name:
+              type: string
+            IP:
+              type: string
+          required:
+            - Name
+            - IP
+  responses:
+    204:
+      description: New etcd cluster is created successfully.
+    401:
+      $ref: '#/components/responses/Unauthorized'

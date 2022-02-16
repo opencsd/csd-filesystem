@@ -1,0 +1,53 @@
+#!/bin/bash
+
+[ -f /var/lib/gms/functions ] && . /var/lib/gms/functions
+
+log "INFO" "[NODE] Migration for 3.1.0-1"
+
+declare -A MIG_KEYS=(
+    ["/{hostname}/AddressInfo"]=""
+    ["/{hostname}/BlockInfo"]="/{hostname}/Block"
+    ["/{hostname}/BondInfo"]=""
+    ["/{hostname}/HostInfo"]=""
+    ["/{hostname}/Lvusage"]="/{hostname}/LVUsage"
+    ["/{hostname}/MountInfo"]="/{hostname}/Mount"
+    ["/{hostname}/NetDeviceActive"]=""
+    ["/{hostname}/NetDeviceInfo"]=""
+    ["/{hostname}/SystemDescription"]="/{hostname}/Spec"
+    ["/{hostname}/SMARTInfo"]="/SMART/Devices"
+    ["/{hostname}/SMARTAttrInfo"]="/SMART/Attributes"
+    ["/{hostname}/SMARTOperInfo"]="/SMART/Operations"
+    ["/{hostname}/SMARTTestInfo"]="/SMART/Tests"
+)
+
+for OLD_KEY in "${!MIG_KEYS[@]}";
+do
+    NEW_KEY="${MIG_KEYS[$OLD_KEY]}"
+
+    if [ "x$NEW_KEY" == "x" ]; then
+        etcdctl rm -r "$OLD_KEY";
+        continue;
+    fi
+
+    for KEY in "(`etcdctl ls -r $OLD_KEY`)";
+    do
+        VALUE="`etcdctl get $KEY 2>/dev/null`";
+
+        # is a directory
+        if [ $? -ne 0 ]; then
+            continue
+        fi
+
+        KEY2=${KEY//$OLD_KEY/$NEW_KEY}
+
+        echo "Migrating $KEY => $KEY2"
+
+        etcdctl set "$KEY2" "$VALUE"
+
+        if [ $? -ne 0 ]; then
+            echo "Failed to set $KEY2"
+            continue
+        fi
+    done
+done
+

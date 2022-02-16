@@ -1,0 +1,19 @@
+  <store ignore_error>
+    @type influxdb
+    host {{hostname}}
+    port 8086
+    dbname anystor
+    time_precision s
+    tag_keys ["hostname"]
+    retry 0
+
+    <buffer>
+      @type memory
+      chunk_limit_size 524288
+      chunk_limit_records 1024
+      flush_interval 60
+      #retry_limit 5
+      retry_wait 1.0
+      #num_threads 1
+    </buffer>
+  </store>

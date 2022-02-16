@@ -1,0 +1,224 @@
+#!/bin/sh
+
+[ -f /var/lib/gms/functions ] && . /var/lib/gms/functions
+
+NODES=($(cat /etc/hosts \
+            | grep 'made by gms' \
+            | cut -d ' ' -f2 \
+            | grep -v -- '-m$'))
+
+log "INFO" "[NODE] Migration for 2.0.5.6"
+
+BACKUP_DIR=/var/lib/gms/backup/default/
+
+[ ! -d $BACKUP_DIR ] && mkdir -p $BACKUP_DIR
+
+function setup_influxdb
+{
+    yum install -y influxdb
+
+    if [ $? -ne 0 ]; then
+        log "ERR" "[NODE] Failed to install influxdb"
+        return $?
+    fi
+
+    [ ! -d $BACKUP_DIR/etc/influxdb ] && mkdir -p $BACKUP_DIR/etc/influxdb
+
+    cp -af /etc/influxdb/influxdb.conf ${BACKUP_DIR}/etc/influxdb/influxdb.conf
+    cp -af /usr/gms/misc/etc/influxdb/influxdb.conf /etc/influxdb/influxdb.conf
+
+    for i in `seq 1 3`;
+    do
+        service influxdb restart
+
+        STATUS=$?
+
+        if [ $STATUS -eq 0 ]; then
+            log "INFO" "[NODE] Service has started: influxdb"
+            break
+        fi
+
+        if [ $i -eq 3 ]; then
+            log "ERR" "[NODE] Failed to start influxdb"
+            return $?
+        else
+            log "WARN" "[NODE] ($i) Retry to start service: influxdb"
+        fi
+
+        sleep 1;
+    done
+
+    /usr/bin/influx -execute "CREATE DATABASE anystor"
+
+    if [ $? -ne 0 ]; then
+        log "ERR" "[NODE] Failed to create database in influxdb"
+        return $?
+    fi
+
+    return 0
+}
+
+function setup_fluentd
+{
+    yum install -y td-agent
+
+    for plugin in "influxdb" "fluent-plugin-influxdb" "fluent-plugin-rewrite-tag-filter";
+    do
+        /usr/sbin/td-agent-gem install /usr/gms/misc/etc/td-agent/$plugin-*.gem
+
+        if [ $? -ne 0 ]; then
+            log "ERR" "[NODE] Failed to install fluentd plugin: $plugin"
+            return $?
+        fi
+    done
+
+    service td-agent stop
+
+    [ ! -d $BACKUP_DIR/etc/td-agent ] && mkdir -p $BACKUP_DIR/etc/td-agent
+
+    cp -af /etc/influxdb/influxdb.conf ${BACKUP_DIR}/etc/td-agent/td-agent.conf
+    cp -af /usr/gms/misc/etc/td-agent/td-agent.conf /etc/td-agent/td-agent.conf
+
+    # replaces '{{hostname}}' with storage IP addresses of each nodes
+    TMPL='/usr/gms/misc/etc/td-agent/store_conf.template'
+    STORE_CONF=
+
+    for NODE in "${NODES[@]}";
+    do
+        if [[ "$TEST" =~ -[1-3]$ ]]; then
+            continue
+        fi
+
+        IFS=$''
+        STRG_IP=`cat /etc/hosts | grep -E " $NODE " | cut -d ' ' -f 1`
+        NODE_CONF=`cat $TMPL | sed -e "s/{{hostname}}/$STRG_IP/g"`
+
+        printf -v STORE_CONF "$STORE_CONF\n$NODE_CONF"
+    done
+
+    unset IFS
+
+    head -n-2 /usr/gms/misc/etc/td-agent/td-agent.conf > /etc/td-agent/td-agent.conf
+    echo "$STORE_CONF" >> /etc/td-agent/td-agent.conf
+    echo "</match>" >> /etc/td-agent/td-agent.conf
+
+    service td-agent start
+
+    return 0
+}
+
+function setup_netdata
+{
+    INSTALLER=/usr/gms/misc/binary/netdata.gz.run
+
+    [ ! -x $INSTALLER ] && chmod +x $INSTALLER
+
+    $INSTALLER --accept --quiet
+
+    if [ $? -ne 0 ]; then
+        log "ERR" "[NODE] Failed to install netdata"
+        return $?
+    fi
+
+    cp -af /usr/gms/misc/etc/netdata/netdata.conf /opt/netdata/etc/netdata/netdata.conf
+
+    if [ $? -ne 0 ]; then
+        log "ERR" "[NODE] Failed to copy netdata config"
+        return $?
+    fi
+
+    log "INFO" "[NODE] netdata is installed"
+
+echo "
+[program:netdata]
+user=root
+process_name=netdata
+startsecs=5
+autostart=true
+autorestart=true
+command=/opt/netdata/bin/srv/netdata -P /opt/netdata/var/run/netdata.pid -D" \
+        >> /etc/supervisord.conf
+
+    log "INFO" "[NODE] Updating supervisord config..."
+
+    supervisorctl update
+
+    sleep 5
+
+    log "INFO" "[NODE] Starting netdata with supervisord..."
+
+    supervisorctl start netdata
+
+    return 0
+}
+
+if [ -e '/usr/gms/misc/mds' ]; then
+    log "INFO" "[NODE] Setting up influxdb..."
+
+    setup_influxdb
+
+    if [ $? -ne 0 ]; then
+        log "ERR" "[NODE] Failed to setup influxdb"
+        exit $?
+    fi
+
+    log "INFO" "[NODE] Setting up fluentd plugins..."
+
+    setup_fluentd
+
+    if [ $? -ne 0 ]; then
+        log "ERR" "[NODE] Failed to setup fluentd plugins"
+        exit $?
+    fi
+
+    log "INFO" "[NODE] ------- Generate grafana dashboard ------"
+
+    log "INFO" "[NODE] Step 1: Login into grafana"
+
+    curl --cookie /tmp/cookies.txt --cookie-jar /tmp/tmpcookies.txt -XPOST \
+        http://127.0.0.1:8890/login -H "Content-Type: application/json" \
+        -d '{"user":"admin","email":"","password":"admin"}' &>/dev/null
+
+    if [ $? != 0 ]; then
+        log "ERR" "[NODE] Failed to login into grafana"
+        exit $?
+    fi
+
+    log "INFO" "[NODE] Step 2: Remove cluster dashboard"
+
+    # create cluster dashboard
+    curl --cookie /tmp/tmpcookies.txt -XDELETE \
+        http://127.0.0.1:8890/api/dashboards/db/prometheus-cluster \
+        -H "Content-Type: application/json" &>/dev/null
+
+    log "INFO" "[NODE] Step 3: Add cluster dashboard"
+
+    JSON='{"dashboard":'`cat /usr/gms/misc/grafana/prometheus_cluster.json`'}'
+
+    # create cluster dashboard
+    curl --cookie /tmp/tmpcookies.txt -XPOST \
+        http://127.0.0.1:8890/api/dashboards/db -H "Content-Type: application/json" \
+        -d"$JSON" &>/dev/null
+
+    if [ $? != 0 ]; then
+        log "ERR" "[NODE] Failed to add cluster dashboard"
+        exit $?
+    fi
+
+    log "INFO" "[NODE] ------- End generating grafana dashboard ------"
+
+    log "INFO" "[NODE] Clean temp files"
+
+    rm -f /tmp/tmpcookies.txt
+fi
+
+log "INFO" "[NODE] Setting up netdata..."
+
+setup_netdata
+
+if [ $? -ne 0 ]; then
+    log "ERR" "[NODE] Failed to setup netdata"
+    exit $?
+fi
+
+log "INFO" "[NODE] Migration is done"

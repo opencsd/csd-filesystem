@@ -1,0 +1,13 @@
+.*/
+db
+db_bak
+log
+*.swp
+/tags
+.vscode
+log.conf
+*cover_db
+*DS_Store
+*.old
+*.bak
+i18n/POTFILES

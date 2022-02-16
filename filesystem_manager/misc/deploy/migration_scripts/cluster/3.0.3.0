@@ -1,0 +1,154 @@
+#!/bin/sh
+
+[ -f /var/lib/gms/functions ] && . /var/lib/gms/functions
+
+log "INFO" "[CLUSTER] Migration for 3.0.3"
+
+log "INFO" "[CLUSTER] Reconfigure External volume and  pools information"
+
+perl -I/usr/gsm/lib -I/usr/gms/lib -e "
+use Cluster::MDSAdapter;
+
+my \$mdsadpt = Cluster::MDSAdapter->new();
+
+my \$ext_vols = \$mdsadpt->get_conf('ExternalVolumeInfo');
+
+foreach (keys(%{\$ext_vols}))
+{
+    \$ext_vols->{\$_}->{volume_id}         = '';
+    \$ext_vols->{\$_}->{snapshot_cnt}      = 0;
+    \$ext_vols->{\$_}->{options}           = {};
+    \$ext_vols->{\$_}->{oper_stage}        = '';
+    \$ext_vols->{\$_}->{pool_type}         = 'External';
+    \$ext_vols->{\$_}->{status}            = 'OK';
+    \$ext_vols->{\$_}->{volume_policy}     = '';
+    \$ext_vols->{\$_}->{num_of_bricks}     = '';
+    \$ext_vols->{\$_}->{tot_num_of_bricks} = '';
+    \$ext_vols->{\$_}->{distributed_cnt}   = 0;
+    \$ext_vols->{\$_}->{disperse_cnt}      = 0;
+    \$ext_vols->{\$_}->{replicated_cnt}    = 0;
+    \$ext_vols->{\$_}->{arbiter_cnt}       = 0;
+    \$ext_vols->{\$_}->{arbiter}           = 'na';
+    \$ext_vols->{\$_}->{stripe_cnt}        = 0;
+    \$ext_vols->{\$_}->{erasure_code}      = 0;
+    \$ext_vols->{\$_}->{dist_node_cnt}     = 0;
+    \$ext_vols->{\$_}->{chaining}          = 'not_chained';
+    \$ext_vols->{\$_}->{transport_type}    = 'tcp';
+    \$ext_vols->{\$_}->{hot_tier}          = 'false';
+    \$ext_vols->{\$_}->{shard}             = 'false';
+    \$ext_vols->{\$_}->{shard_block_size } = undef;
+
+    my \$base_pool = \$ext_vols->{\$_}->{Pool_Name};
+
+}
+
+\$mdsadpt->set_conf('ExternalVolumeInfo', \$ext_vols);
+
+my \$vpools = \$mdsadpt->get_conf('VPoolInfo');
+
+if (!defined(\$vpools))
+{
+    print \"[CLUSTER] Any volume pools do not exist\"
+            . \" so this migration step will be skipped...\\n\";
+    exit 0;
+}
+
+foreach my \$pool (keys(%{\$vpools}))
+{
+    if (defined(\$vpools->{\$pool}->{Pool_Type}) && \$vpools->{\$pool}->{Pool_Type} eq 'external')
+    {
+        \$vpools->{\$pool}->{Pool_Type} = 'External';
+        \$vpools->{\$pool}->{Mount_Path}           = '';
+        \$vpools->{\$pool}->{Pool_Used}            = '';
+        \$vpools->{\$pool}->{Pool_Status}          = 'OK';
+        \$vpools->{\$pool}->{Pool_Free_Size}       = '';
+        \$vpools->{\$pool}->{Provision}            = '';
+        \$vpools->{\$pool}->{Pool_Free_Size_Bytes} = undef;
+        \$vpools->{\$pool}->{Pool_Status_Detail}   = [];
+        \$vpools->{\$pool}->{Base_Pool}            = '';
+        \$vpools->{\$pool}->{LV_Count}             = undef;
+        \$vpools->{\$pool}->{Pool_Size_Bytes}      = undef;
+        \$vpools->{\$pool}->{Nodes}                = [];
+        \$vpools->{\$pool}->{Pool_Status_Msg}      = '';
+        \$vpools->{\$pool}->{Pool_Size}            = '';
+    }
+}
+
+my \$res = \$mdsadpt->set_conf('VPoolInfo', \$vpools);
+
+exit (\$res ? 0 : 1);
+"
+
+if [ $? != 0 ]; then
+  log "ERR" "[CLUSTER] Failed to reconfigure external volume and pools information"
+fi
+
+log "INFO" "[CLUSTER] Convert external volume keys to lowercase"
+
+perl -I/usr/gsm/lib -I/usr/gms/lib -e "
+use Cluster::MDSAdapter;
+
+sub lowercase
+{
+    my \$data = shift;
+
+    if (ref(\$data) eq \"ARRAY\")
+    {
+        return [
+            map lowercase(\$_), @{\$data}
+        ];
+    }
+    elsif (ref(\$data) eq \"HASH\")
+    {
+        my %hash = map { lc (\$_) => lowercase(\$data->{\$_}) } keys %{\$data};
+        return \\%hash;
+    }
+    else
+    {
+        return \$data;
+    }
+}
+
+my \$mdsadpt = Cluster::MDSAdapter->new();
+
+my \$ext_vols = \$mdsadpt->get_conf('ExternalVolumeInfo');
+
+if (!defined(\$ext_vols))
+{
+    print \"[CLUSTER] Any external volumes do not exist\"
+            . \" so this migration step will be skipped...\\n\";
+    exit 0;
+}
+
+my \$lower = lowercase(\$ext_vols);
+
+my \$res = \$mdsadpt->set_conf('ExternalVolumeInfo', \$lower);
+
+exit (\$res ? 0 : 1);
+"
+
+if [ $? != 0 ]; then
+  log "ERR" "[CLUSTER] Failed to convert external volume keys"
+fi
+
+perl -I/usr/gsm/lib -I/usr/gms/lib -e " 
+use Cluster::MDSAdapter;
+
+my \$mdsadpt = Cluster::MDSAdapter->new();
+my \$del_trim = \$mdsadpt->get_conf(\"Publisher\");
+
+delete(\$del_trim->{Trim});
+
+my \$res = \$mdsadpt->set_conf(\"Publisher\", \$del_trim);
+
+system('service girasole-publisher restart');
+
+exit (\$res ? 0 : 1);
+" 
+
+if [ $? != 0 ]; then
+  log "ERR" "[CLUSTER] Failed to remove Trim plugin" 
+fi
+
+log "INFO" "[CLUSTER] Migration is done"
+

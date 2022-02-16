@@ -1,0 +1,29 @@
+#!/usr/bin/perl
+
+use v5.14;
+
+use utf8;
+use strict;
+use warnings;
+
+BEGIN
+{
+    use File::Basename qw/dirname/;
+    use File::Spec;
+    use File::Spec::Functions qw/rel2abs catdir/;
+    use File::ShareDir qw/dist_dir/;
+
+    (my $ROOTDIR = dirname(rel2abs(__FILE__))) =~ s/\/[^\/]+$//;
+
+    unshift(@INC,
+        (map { "$ROOTDIR/$_"; } qw/libgms lib/),
+        '/usr/girasole/lib');
+
+    map { mkdir "$ROOTDIR/$_" if !-d "$ROOTDIR/$_"; } qw/conf db/;
+
+    map { mkdir "/var/$_/gms" if (!-d "/var/$_/gms"); } qw/run lib/;
+}
+
+# Start command line interface for application
+require Mojolicious::Commands;
+my $app = Mojolicious::Commands->start_app('GMS');

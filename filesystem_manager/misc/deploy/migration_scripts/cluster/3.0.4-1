@@ -1,0 +1,16 @@
+#!/bin/sh
+
+[ -f /var/lib/gms/functions ] && . /var/lib/gms/functions
+
+log "INFO" "[CLUSTER] Migration for 3.0.4-1"
+
+log "INFO" "[CLUSTER] Delete useless drop packet tasks"
+
+mysql -u root -pgluesys\!\! -e "DELETE FROM girasole.tasks WHERE code LIKE 'NET_PACKETS_%_INBOUND_PACKETS_DROPPED_RATIO' OR code LIKE 'NET_DROPS_%_INBOUND_PACKETS_DROPPED'"
+
+if [ $? != 0 ]; then
+  log "ERR" "[CLUSTER] Failed to delete useless drop packet tasks"
+fi
+
+log "INFO" "[CLUSTER] Migration is done"
+

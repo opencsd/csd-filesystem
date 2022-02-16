@@ -1,0 +1,74 @@
+#!/usr/bin/perl
+
+use v5.14;
+
+use strict;
+use warnings;
+use utf8;
+
+BEGIN
+{
+    use File::Basename qw/dirname/;
+    use File::Spec;
+    use File::Spec::Functions qw/rel2abs/;
+
+    my $ROOTDIR = dirname(rel2abs(__FILE__));
+    $ROOTDIR =~ s/gms\/.+$/gms/;
+
+    unshift(@INC, "$ROOTDIR/libgms", "$ROOTDIR/lib", '/usr/girasole/lib');
+}
+
+use Sys::Syslog;
+use GMS::Common::IPC;
+
+my $BUFSIZE = 8192;
+my $buf     = "";
+
+while (sysread(STDIN, $buf, $BUFSIZE))
+{
+    next if ($buf eq '');
+    chomp($buf);
+
+    my @tmp = split(/\|\|/, $buf);
+    next if (@tmp != 6);
+
+    my $log_type = $tmp[1];
+    my $level    = $tmp[2] < 4 ? 'error' : 'warning';
+    my $host     = $tmp[3];
+    my $tag      = $tmp[4];
+    my $message  = $tmp[5];
+
+    my $name = 'unknown';
+    my $pid  = 'unknown';
+
+    if ($tag =~ /(^(?<name>.+)\[(?<pid>\d+)\]:$)/)
+    {
+        $name = $+{name};
+        $pid  = $+{pid};
+    }
+
+    my @parms = (
+        'event',
+        'create',
+        "--level=$level",
+        "--from=$host",
+        "--facility=$name",
+        "--code=LOG_FROM_COMPONENT",
+        "--msg=\'$name: $message\'",
+        "--details=message=\'$message\'",
+        "--details=process_name=\'$name\'",
+        "--details=pid=\'$pid\'",
+    );
+
+    my $result = GMS::Common::IPC::exec(
+        cmd  => '/usr/bin/eflowdctl',
+        args => \@parms
+    );
+
+    if (!defined($result) || $result->{status})
+    {
+        syslog('err', "failed to create $name event. (msg: $message)");
+    }
+
+    $buf = "";
+}

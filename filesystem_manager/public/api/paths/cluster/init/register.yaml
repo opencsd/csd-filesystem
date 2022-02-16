@@ -1,0 +1,29 @@
+post:
+  x-mojo-to: 'Cluster::Initializer#register'
+  operationId: cluster_init_register
+  tags:
+    - cluster
+    - init
+  requestBody:
+    required: true
+    description: request
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            Mgmt_IP:
+              type: string
+            Mgmt_Interface:
+              type: string
+            Mgmt_Netmask:
+              type: string
+            Storage_IP:
+              type: string
+            Storage_Interface:
+              type: string
+  responses:
+    200:
+      description: This system is registered to the cluster successfully.
+    401:
+      $ref: '#/components/responses/Unauthorized'

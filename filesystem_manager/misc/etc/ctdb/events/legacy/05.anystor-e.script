@@ -1,0 +1,186 @@
+#!/bin/sh
+
+######################################
+# interface event script for anystor-e 
+# if storage network interfaces is down
+# this release IPs from your public interface
+# and excute ctdb ban
+
+[ -n "$CTDB_BASE" ] || \
+    CTDB_BASE=$(d=$(dirname "$0") ; cd -P "$d" ; dirname "$PWD")
+
+. "${CTDB_BASE}/functions"
+
+load_script_options
+
+BAN_TIMEOUT=150
+EXT_IFACES=("bond0")
+
+isnic ()
+{
+    iface=$1
+    if [[ -d "/sys/class/net/$iface" ]]; then
+        return 0
+    fi
+    return 1
+}
+
+isbonding () 
+{
+    iface=$1
+    if [[ -d "/sys/class/net/$iface/bonding" ]]; then
+        return 0
+    fi
+    return 1
+}
+
+get_bonding_slaves ()
+{
+    iface=$1
+    path="/sys/class/net/$iface/bonding/slaves"
+    if [[ -f "$path" ]]; then
+        cat $path
+    else
+        echo ""
+    fi
+}
+
+islinkup () 
+{
+    iface=$1
+    path="/sys/class/net/$iface/operstate"
+    if [[ -f "$path" ]]; then
+        operstate=$(cat $path)
+        if [[ $operstate == "up" ]]; then
+            return 0
+        fi
+    fi
+    return  1
+}
+
+monitor_interfaces ()
+{
+    action=$1
+
+    for _iface in ${EXT_IFACES[@]} ; do
+        if ! isnic "$_iface"; then
+            continue
+        fi
+
+        if isbonding "$_iface"; then
+            tmp=$(get_bonding_slaves "$_iface")
+            slave_ifaces=(${tmp//\s\+/ })
+
+            down_slave=0
+
+            for _siface in ${slave_ifaces[@]}; do
+                if ! islinkup "$_siface"; then
+                    echo "WARN: slave($_siface) network interface is down: $_iface"
+                    let down_slave=$down_slave+1
+                fi
+            done
+
+            if [[ $down_slave == ${#slave_ifaces[@]} ]]; then
+                echo "WARN: all of slave network interfaces are down: $_iface"
+                ctdb_action_handler $action
+                return 1
+            fi
+        fi
+
+        if ! islinkup "$_iface"; then
+            echo "$_iface is down"
+            ctdb_action_handler $action
+            return 1
+        fi
+    done
+
+    return 0
+}
+
+ctdb_action_handler ()
+{
+    remove_all_public_ips
+
+    case "$1" in
+    ban)
+        ctdb ban ${BAN_TIMEOUT} &
+        ;;
+    esac
+}
+
+remove_all_public_ips () 
+{
+    while read tmp iface ; do
+
+        ipmask=(${tmp//\// })
+
+        ip_block "${ipmask[0]}" "$iface"
+
+        kill_tcp_connections "$iface" "${ipmask[0]}"
+
+        delete_ip_from_iface "$iface" "${ipmask[0]}" "${ipmask[1]}"
+
+        ip_unblock "${ipmask[0]}" "$iface"
+
+    done <"${CTDB_PUBLIC_ADDRESSES:-/dev/null}"
+
+    flush_route_cache
+}
+
+ip_block ()
+{
+    _ip="$1"
+    _iface="$2"
+
+    case "$_ip" in
+    *:*) _family="inet6" ;;
+    *)   _family="inet"  ;;
+    esac
+
+    # Extra delete copes with previously killed script
+    iptables_wrapper "$_family" \
+        -D INPUT -i "$_iface" -d "$_ip" -j DROP 2>/dev/null
+    iptables_wrapper "$_family" \
+        -I INPUT -i "$_iface" -d "$_ip" -j DROP
+}
+
+ip_unblock ()
+{
+    _ip="$1"
+    _iface="$2"
+
+    case "$_ip" in
+    *:*) _family="inet6" ;;
+    *)   _family="inet"  ;;
+    esac
+
+    iptables_wrapper "$_family" \
+        -D INPUT -i "$_iface" -d "$_ip" -j DROP 2>/dev/null
+}
+
+
+case "$1" in
+startup)
+    monitor_interfaces "ban" || exit 1
+    ;;
+monitor)
+    monitor_interfaces "ban" || exit 1
+    ;;
+startrecovery)
+    monitor_interfaces "ban" || exit 1
+
+    (
+        if ! stat "$CTDB_RECOVERY_LOCK" ; then
+            drop_all_public_ips
+            ctdb shutdown
+        fi
+    ) > /dev/null 2>&1 &
+    
+    ;;
+recovered)
+    drop_all_public_ips
+    ctdb unban &
+    ;;
+esac
+
+exit 0

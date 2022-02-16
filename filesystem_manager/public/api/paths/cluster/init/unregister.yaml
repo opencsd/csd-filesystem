@@ -1,0 +1,21 @@
+post:
+  x-mojo-to: 'Cluster::Initializer#unregister'
+  operationId: cluster_init_unregister
+  tags:
+    - cluster
+    - init
+  requestBody:
+    required: true
+    description: request
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            Target_Node:
+              type: string
+  responses:
+    200:
+      description: This system is unregistered from the cluster successfully.
+    401:
+      $ref: '#/components/responses/Unauthorized'

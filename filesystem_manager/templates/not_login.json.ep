@@ -1,0 +1,8 @@
+{
+    "return"   : "false",
+    "code"     : "NOT_LOGGED_IN",
+    "msg"      : "You are not logged in",
+    "entity"   : null,
+    "statuses" : [],
+    "status"   : "ok"
+}

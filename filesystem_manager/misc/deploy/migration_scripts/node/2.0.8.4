@@ -1,0 +1,41 @@
+#!/bin/sh
+
+[ -f /var/lib/gms/functions ] && . /var/lib/gms/functions
+
+log "INFO" "[NODE] Migration for 2.0.8.4"
+
+perl -I/usr/gsm/lib -I/usr/gms/lib -e '
+my $config_dir = "/etc/sysconfig/network-scripts";
+opendir(my $dh, $config_dir) || exit 1;
+my @ifcfgs = map { "$config_dir/$_" } grep { $_ =~ /ifcfg-/ } readdir($dh);
+closedir($dh);
+
+foreach ( @ifcfgs )
+{
+    my $fh; my @conts;
+    exit 2 if ( ! open($fh, "<", $_) );
+    while (my $line = <$fh> ){ push @conts, $line; }
+    close $fh;
+    @conts = grep { $_ !~ /^$/ } @conts;
+
+    next if ( $conts[0] !~ /#written by gms/ || $conts[1] !~ /#the member of/ );
+
+    my $tmp = $conts[0];
+    $conts[0] = $conts[1];
+    $conts[1] = $tmp;
+
+    exit 3 if ( ! open($fh, ">", $_) );
+    foreach my $new_line ( @conts ) { print $fh $new_line; }
+    close $fh;
+}
+
+exit 0;
+'
+
+if [ $? = 0 ]; then
+    log "INFO" "[NODE] Slave ifcfg format is changed"
+else
+    log "ERR" "[NODE] Changing slave ifcfg format is failed: $?"
+fi 
+
+

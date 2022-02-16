@@ -1,0 +1,20 @@
+# file_copies.act
+# resolved variable %GMSDIR
+# original_file:::copy_file
+
+# make env
+%GMSDIR/misc/deploy/env/export/.anchor:::/export/.anchor
+%GMSDIR/misc/deploy/env/volume/.anchor:::/volume/.anchor
+%GMSDIR/misc/deploy/env/home/__internal/etcd/.anchor:::/home/__internal/etcd/.anchor
+
+# default
+%GMSDIR/misc/etc/default/gluesys:::/etc/default/gluesys
+
+# sysconfig
+%GMSDIR/misc/etc/sysconfig/ntpd:::/etc/sysconfig/ntpd
+%GMSDIR/misc/etc/sysconfig/td-agent:::/etc/sysconfig/td-agent
+
+# RCs
+%GMSDIR/misc/vimrc:::/root/.vimrc
+%GMSDIR/misc/toprc:::/root/.toprc
+%GMSDIR/misc/tmux.conf:::/root/.tmux.conf

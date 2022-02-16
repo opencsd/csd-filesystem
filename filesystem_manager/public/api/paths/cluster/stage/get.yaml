@@ -1,0 +1,36 @@
+post:
+  x-mojo-to: 'Cluster::Stage#get'
+  operationId: cluster_stage_get
+  tags:
+    - cluster
+    - stage
+  requestBody:
+    required: true
+    description: 'get a stage'
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            Stage:
+              type: string
+            Scope:
+              type: string
+            Data:
+              anyOf:
+                - nullable: true
+                - type: string
+                - type: object
+          required:
+            - Scope
+  responses:
+    200:
+      description: the stage of the cluster
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/DefaultResponse'
+              - type: object
+    401:
+      $ref: '#/components/responses/Unauthorized'

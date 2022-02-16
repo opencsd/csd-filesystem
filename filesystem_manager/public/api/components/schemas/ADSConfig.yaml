@@ -1,0 +1,18 @@
+description: present ADS authentication config
+type: object
+properties:
+  NBName:
+    nullable: true
+    type: string
+  Realm:
+    type: string
+  DC:
+    anyOf:
+      - type: array
+        items:
+          type: string
+      - type: string
+  Admin:
+    type: string
+  Password:
+    type: string

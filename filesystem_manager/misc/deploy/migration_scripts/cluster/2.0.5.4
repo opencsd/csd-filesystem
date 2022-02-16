@@ -1,0 +1,42 @@
+#!/bin/sh
+
+[ -f /var/lib/gms/functions ] && . /var/lib/gms/functions
+
+log "INFO" "[CLUSTER] migration for 2.0.5.4"
+
+# GSM table migrating for events/tasks
+log "INFO" "[CLUSTER] reloading cluster volume information ..."
+
+. /etc/default/gluesys
+
+perl -I/usr/gsm/lib -I/usr/gms/lib -e "
+use Try::Tiny;
+use Gluster::Controller::Volume;
+my \$vol = Gluster::Controller::Volume->new();
+
+my \$reloaded = try 
+    {
+        my \$res = \$vol->reload_volume_info();
+        if (\$res ne 0)
+        {
+            return 1;
+        }
+
+        return 0;
+    }
+    catch
+    {
+        warn \"@_\";
+        return -1;
+    };
+
+exit 1 if (\$reloaded ne 0);
+exit 0;
+"
+RELOADED=$?
+if [ $RELOADED -ne 0 ]; then
+    log "ERR" "[CLUSTER] failed to reload cluster volume informations";
+    exit 1
+fi
+
+log "INFO" "[CLUSTER] Migration is done"

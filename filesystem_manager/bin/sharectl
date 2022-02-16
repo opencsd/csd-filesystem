@@ -1,0 +1,1040 @@
+#!/usr/bin/perl -I/usr/gms/libgms -I /usr/gms/bin
+
+use v5.14;
+
+use strict;
+use warnings;
+use utf8;
+
+our $AUTHORITY = 'cpan:gluesys';
+
+use File::Path qw/make_path/;
+use GMS::Common::Command qw/:all/;
+use GMS::Common::Logger;
+use GMS::Common::OptArgs;
+use JSON;
+
+require ctl_lib::Utils;
+
+#---------------------------------------------------------------------------
+#   Constants
+#---------------------------------------------------------------------------
+use constant {
+    DEF_LOGFILE    => '/var/log/gms/sharectl.log',
+    GMS_API_SERVER => '127.0.0.1:3000',
+    API_TIMEOUT    => '60',
+};
+
+#---------------------------------------------------------------------------
+#   Global Variables
+#---------------------------------------------------------------------------
+our $PARSER = undef;
+our %OPTS   = (
+    DEBUG   => 0,
+    LOGFILE => DEF_LOGFILE,
+);
+
+#---------------------------------------------------------------------------
+#   Main
+#---------------------------------------------------------------------------
+$PARSER = GMS::Common::OptArgs->new(
+    commands => [
+
+        # CIFS CMD
+        {
+            path     => 'cifs',
+            desc     => 'control cifs share',
+            callback => sub { print_help_cifs(1); },
+        },
+        {
+            path     => 'cifs create',
+            desc     => 'create cifs share',
+            callback => sub { exit share_create('cifs'); },
+        },
+        {
+            path     => 'cifs remove',
+            desc     => 'remove cifs share',
+            callback => sub { exit share_remove('cifs'); },
+        },
+        {
+            path     => 'cifs modify',
+            desc     => 'modify cifs share',
+            callback => sub { exit share_modify('cifs'); },
+        },
+        {
+            path     => 'cifs access',
+            desc     => 'access contorl cifs share',
+            callback => sub { exit share_access('cifs'); },
+        },
+        {
+            path     => 'cifs list',
+            desc     => 'listing cifs share',
+            callback => sub { exit share_list('cifs'); },
+        },
+        {
+            path     => 'cifs filter',
+            desc     => 'filtering cifs share',
+            callback => sub { exit cifs_filter(); },
+        },
+        {
+            path     => 'cifs dfs',
+            desc     => 'dfs setting for cifs share',
+            callback => sub { exit cifs_dfs(); },
+        },
+        {
+            path     => 'cifs start',
+            desc     => 'starting cifs share',
+            callback => sub { exit share_start('cifs'); },
+        },
+        {
+            path     => 'cifs stop',
+            desc     => 'stoping cifs share',
+            callback => sub { exit share_stop('cifs'); },
+        },
+        {
+            path     => 'cifs reload',
+            desc     => 'reloading cifs share',
+            callback => sub { exit share_reload('cifs'); },
+        },
+        {
+            path     => 'cifs restart',
+            desc     => 'restarting cifs share',
+            callback => sub { exit share_restart('cifs'); },
+        },
+
+        # NFS CMD
+        {
+            path     => 'nfs',
+            desc     => 'control nfs share',
+            callback => sub { $PARSER->print_help('nfs'); },
+        },
+        {
+            path     => 'nfs create',
+            desc     => 'create nfs share',
+            callback => sub { exit share_create('nfs'); },
+        },
+        {
+            path     => 'nfs remove',
+            desc     => 'remove nfs share',
+            callback => sub { exit share_remove('nfs'); },
+        },
+        {
+            path     => 'nfs modify',
+            desc     => 'modify nfs share',
+            callback => sub { exit share_modify('nfs'); },
+        },
+        {
+            path     => 'nfs access',
+            desc     => 'access contorl nfs share',
+            callback => sub { exit share_access('nfs'); },
+        },
+        {
+            path     => 'nfs list',
+            desc     => 'listing nfs share',
+            callback => sub { exit share_list('nfs'); },
+        },
+        {
+            path     => 'nfs start',
+            desc     => 'starting nfs share',
+            callback => sub { exit share_start('nfs'); },
+        },
+        {
+            path     => 'nfs stop',
+            desc     => 'stoping nfs share',
+            callback => sub { exit share_stop('nfs'); },
+        },
+        {
+            path     => 'nfs reload',
+            desc     => 'reloading nfs share',
+            callback => sub { exit share_reload('nfs'); },
+        },
+        {
+            path     => 'nfs restart',
+            desc     => 'restarting nfs share',
+            callback => sub { exit share_restart('nfs'); },
+        },
+
+    ],
+    options => [
+        {
+            pinned   => 1,
+            short    => 'm',
+            long     => 'mkdir',
+            desc     => 'make share path with this permission',
+            valdesc  => '<[owner]:[group]:[chmod]>',
+            callback => sub { $OPTS{MKDIR} = shift; },
+        },
+        {
+            pinned   => 1,
+            short    => 'Z',
+            long     => 'access-zone',
+            desc     => 'allow/deny access zone setting',
+            valdesc  => '<zonename:disallow|allow|deny|readonly|read/write>',
+            callback => sub { $OPTS{ZONE} = shift; },
+        },
+        {
+            pinned   => 1,
+            short    => 'D',
+            long     => 'description',
+            desc     => 'share description',
+            valdesc  => '<STRINGS>',
+            callback => sub { $OPTS{DESCRIPT} = shift; },
+        },
+        {
+            pinned   => 1,
+            short    => 'p',
+            long     => 'access-priority',
+            desc     => 'set access priority on this share',
+            valdesc  => '<read|write>',
+            callback => sub { $OPTS{ACC_PRI} = shift; },
+        },
+
+        # Module
+        {
+            pinned   => 1,
+            short    => 'M',
+            long     => 'modules',
+            desc     => 'check module status',
+            valdesc  => '<trash|audit|virus>',
+            callback => sub { $OPTS{MOD_STATUS} = shift; },
+        },
+        {
+            pinned   => 1,
+            short    => 'L',
+            long     => 'audit-log',
+            desc     => '[Not Supported] set audit log feature on this share',
+            valdesc  => '<on|off>',
+            callback => sub { $OPTS{MOD_AUDIT} = shift; },
+        },
+        {
+            pinned  => 1,
+            short   => 'V',
+            long    => 'anti-virus',
+            desc    => '[Not Supported] set anti-virus feature on this share',
+            valdesc => '<on|off>',
+            callback => sub { $OPTS{MOD_VIRUS} = shift; },
+        },
+        {
+            pinned   => 1,
+            short    => 'T',
+            long     => 'trash',
+            desc     => '[Not Supported] set trash feature on this share',
+            valdesc  => '<on|off>',
+            callback => sub { $OPTS{MOD_TRASH} = shift; },
+        },
+
+        # CIFS Options
+        {
+            pinned   => 1,
+            short    => 'w',
+            long     => 'writable',
+            desc     => 'writable share mode',
+            callback => sub { $OPTS{SW_WRITABLE} = 1; },
+        },
+        {
+            pinned   => 1,
+            short    => 'r',
+            long     => 'readonly',
+            desc     => 'readonly share mode',
+            callback => sub { $OPTS{SW_READONLY} = 1; },
+        },
+        {
+            pinned   => 1,
+            short    => 'G',
+            long     => 'guest-allow',
+            desc     => 'allow guest user access',
+            valdesc  => '<on|off>',
+            callback => sub { $OPTS{SW_GUEST} = shift; },
+        },
+        {
+            pinned   => 1,
+            short    => 'H',
+            long     => 'hidden-share',
+            desc     => 'hidden share name in window browsing',
+            valdesc  => '<on|off>',
+            callback => sub { $OPTS{SW_HIDDEN} = shift; },
+        },
+        {
+            pinned   => 1,
+            short    => 'i',
+            long     => 'add',
+            desc     => 'add items',
+            callback => sub { $OPTS{SW_ADD} = 1; },
+        },
+
+        # Access
+        {
+            pinned   => 1,
+            short    => 'x',
+            long     => 'remove',
+            desc     => 'remove items',
+            callback => sub { $OPTS{SW_REMOVE} = 1; },
+        },
+        {
+            pinned   => 1,
+            short    => 'j',
+            long     => 'json',
+            desc     => 'print json type',
+            callback => sub { $OPTS{SW_JSON} = 1; },
+        },
+        {
+            pinned   => 1,
+            short    => 'd',
+            long     => 'delete-dir',
+            desc     => 'delete dir when share remove',
+            callback => sub { $OPTS{SW_RMDIR} = 1; },
+        },
+        {
+            pinned   => 1,
+            short    => 'W',
+            long     => 'rw-list',
+            desc     => 'select writeable user/groups',
+            valdesc  => '<user:@group...>',
+            callback => sub { $OPTS{LIST_WRITE} = shift; },
+        },
+        {
+            pinned   => 1,
+            short    => 'R',
+            long     => 'ro-list',
+            desc     => 'select read only user/groups',
+            valdesc  => '<user:@group...>',
+            callback => sub { $OPTS{LIST_READ} = shift; },
+        },
+
+        # CIFS Filter
+        {
+            pinned   => 1,
+            short    => 's',
+            long     => 'size',
+            desc     => '[Not Supported] filtering with file size',
+            valdesc  => '<FileSize.KB>',
+            callback => sub { $OPTS{FILTER_SIZE} = shift; },
+        },
+        {
+            pinned   => 1,
+            short    => 't',
+            long     => 'filter-type',
+            desc     => '[Not Supported] extension filter mode',
+            valdesc  => '<include|exclude>',
+            callback => sub { $OPTS{FILTER_MODE} = shift; },
+        },
+        {
+            pinned   => 1,
+            short    => 'e',
+            long     => 'extension',
+            desc     => '[Not Supported] extension file list',
+            valdesc  => '<include|exclude>',
+            callback => sub { $OPTS{FILTER_LIST} = shift; },
+        },
+        {
+            pinned   => 1,
+            short    => 'A',
+            long     => 'network',
+            desc     => '[Not Supported] select network address for msdfs',
+            valdesc  => '<IP[/mask]>',
+            callback => sub { $OPTS{DFS_IP} = shift; },
+        },
+        {
+            pinned   => 1,
+            short    => 'P',
+            long     => 'path',
+            desc     => 'select path',
+            valdesc  => '<PATH>',
+            callback => sub { $OPTS{SHARE_PATH} = shift; },
+        },
+        {
+            pinned   => 1,
+            short    => 'S',
+            long     => 'sharename',
+            desc     => 'select sharename',
+            valdesc  => '<STRING>',
+            callback => sub { $OPTS{SHARE_NAME} = shift; },
+        },
+        {
+            pinned   => 1,
+            short    => 'I',
+            long     => 'view-dfs',
+            desc     => '[Not Supported] view msdfs info',
+            callback => sub { $OPTS{DFS_INFO} = 1; },
+        },
+        {
+            pinned   => 1,
+            short    => 'q',
+            long     => 'quiet',
+            desc     => 'quiet output',
+            callback => sub { $OPTS{SW_QUIET} = 1; },
+        },
+    ],
+    help_cmd  => 1,
+    help_lopt => 1,
+);
+
+setup_log();
+
+$PARSER->parse(args => \@ARGV);
+
+release_sig_warn();
+
+exit 0;
+
+#---------------------------------------------------------------------------
+#   Functions
+#---------------------------------------------------------------------------
+
+# PD2ASE3 port Issue
+# TODO : there is no comment/shell options
+#
+
+sub print_help_cifs
+{
+    my ($res) = @_;
+
+    my $EXAMPLE_CIFS
+        = "\nEXAMPLES\n"
+        . "    sharectl cifs create [-m:] [-w|-r]  [-L:] [-V:] [-T:] [-D:] -S: -P:\n"
+        . "    sharectl cifs access { {-i|-x} [-W:] [-R:] } | -Z: | { [-p:] [-H:] [-G:] } -S:\n"
+        . "    sharectl cifs filter  {-s:} | {-i|-x -e:} {-t:} -S:\n"
+        . "    sharectl cifs modify [-w|-r] [-L:] [-V:] [-T:] -S:\n"
+        . "    sharectl cifs remove [-d] -S:\n"
+        . "    sharectl cifs list   [-j] [-S:]\n"
+        . "    sharectl cifs dfs [-A: | -S: | -I]\n"
+        . "    sharectl cifs {start|stop|reload|restart}\n";
+
+    $PARSER->print_help('cifs', $EXAMPLE_CIFS, $res // 0);
+}
+
+sub share_create
+{
+    my ($proto) = @_;
+    my @err;
+
+    if (!defined($OPTS{SHARE_NAME}) || !defined($OPTS{SHARE_PATH}))
+    {
+        if ($proto eq 'cifs')
+        {
+            print_log(LOG_ERR, "check pararm\n");
+            print_help_cifs(1);
+        }
+        else
+        {
+            print_log(LOG_ERR, "Not Supported Yet\n");
+        }
+
+        return 1;
+    }
+
+    if (defined($OPTS{MKDIR}))
+    {
+        my ($owner, $group, $chmod) = split(':', $OPTS{MKDIR});
+
+        make_path(
+            $OPTS{PATH_NAME},
+            {
+                owner => $owner // 'root',
+                group => $group // 'root',
+                mode  => $chmod // '0755',
+                error => \my $err
+            }
+        );
+
+        if (@err)
+        {
+            foreach my $diag (@{$err})
+            {
+                my ($file, $message) = %{$diag};
+
+                if ($file eq '')
+                {
+                    print "general error: $message\n";
+                }
+                else
+                {
+                    print "problem mkdir $file: $message\n";
+                }
+            }
+
+            return 1;
+        }
+    }
+
+    my (undef, $mode, $volume, $subdir) = split('/', $OPTS{SHARE_PATH});
+
+    if (!defined($mode) && $mode =~ /export|volume/)
+    {
+        print_log(LOG_ERR, "check path pararm\n");
+        return 1;
+    }
+
+    #TODO ::  volume check
+    #
+    my %arguments = (ShareName => $OPTS{SHARE_NAME});
+    my %entity    = (
+        Volume      => $volume,
+        SharePath   => $OPTS{SHARE_PATH},
+        ShareDesc   => $OPTS{DESCRIPT} // '',
+        ProtocolSvc => {                        #share protocol on/off
+            CIFS   => ($proto eq 'cifs')   ? 'on' : 'off',
+            NFS    => ($proto eq 'nfs')    ? 'on' : 'off',
+            FTP    => ($proto eq 'ftp')    ? 'on' : 'off',
+            AFP    => ($proto eq 'afp')    ? 'on' : 'off',
+            WEBDAV => ($proto eq 'webdav') ? 'on' : 'off',
+        }
+    );
+
+    my $res = __call_rest_api('cluster/share/create',
+        {argument => \%arguments, entity => \%entity}, API_TIMEOUT);
+
+    return 1 if !defined $res;
+
+    given ($proto)
+    {
+        when ('cifs')
+        {
+            %entity = (
+                Active     => 'on',
+                ShareRight => defined($OPTS{SW_READONLY})
+                ? 'readonly'
+                : 'read/write',
+                CIFSoption => {
+                    GuestAllow  => $OPTS{SW_GUEST}  // 'off',
+                    HiddenShare => $OPTS{SW_HIDDEN} // 'off',
+                    AuditOn     => $OPTS{MOD_AUDIT} // 'off',
+                    VirusOn     => $OPTS{MOD_VIRUS} // 'off',
+                    TrashOn     => $OPTS{MOD_TRASH} // 'off',
+                }
+            );
+
+            $res = __call_rest_api('cluster/share/cifs/update',
+                {argument => \%arguments, entity => \%entity}, API_TIMEOUT);
+        }
+        when ('nfs')    { }
+        when ('ftp')    { }
+        when ('afp')    { }
+        when ('webdav') { }
+    }
+
+    return defined($res) ? 0 : 1;
+}
+
+sub share_access
+{
+    my ($proto) = @_;
+    my $res;
+
+    my @zone_list     = ();
+    my @user_list     = ();
+    my @group_list    = ();
+    my %proto_options = undef;
+
+    if (!defined $OPTS{SHARE_NAME})
+    {
+        if ($proto eq 'cifs')
+        {
+            print_log(LOG_ERR, "check pararm\n");
+            print_help_cifs(1);
+        }
+        else
+        {
+            print_log(LOG_ERR, "Not Supported Yet\n");
+        }
+        return 1;
+    }
+
+    my %arguments = (ShareName => $OPTS{SHARE_NAME});
+    my %entity    = ();
+
+    given ($proto)
+    {
+        when ('cifs')
+        {
+            if (defined($OPTS{SW_ADD}) or defined($OPTS{SW_REMOVE}))
+            {
+                _get_access_list(\@user_list, \@group_list);
+            }
+
+            if (defined($OPTS{ZONE}))
+            {
+                _get_access_zone(\@zone_list);
+            }
+
+            if (defined($OPTS{SW_GUEST}))
+            {
+                $proto_options{GuestAllow} = $OPTS{SW_GUEST} // 'off';
+            }
+
+            if (defined($OPTS{SW_HIDDEN}))
+            {
+                $proto_options{HiddenShare} = $OPTS{SW_HIDDEN} // 'off';
+            }
+
+            if (defined($OPTS{ACC_PRI}))
+            {
+                $proto_options{AccessPri} = $OPTS{ACC_PRI} // 'write';
+            }
+
+            %entity = (
+                AccessZone  => \@zone_list,
+                AccessUser  => \@user_list,
+                AccessGroup => \@group_list,
+                CIFSoption  => \%proto_options
+            );
+
+            $res = __call_rest_api('cluster/share/cifs/update',
+                {argument => \%arguments, entity => \%entity}, API_TIMEOUT);
+        }
+        when ('nfs')    { }
+        when ('ftp')    { }
+        when ('afp')    { }
+        when ('webdav') { }
+    }
+
+    return defined($res) ? 0 : 1;
+}
+
+sub _get_access_list
+{
+    my ($user_list, $group_list) = @_;
+
+    my $disallow = undef;
+    $disallow = 'disallow' if defined($OPTS{SW_REMOVE});
+
+    if (defined($OPTS{LIST_WRITE}))
+    {
+        foreach my $u (split(':', $OPTS{LIST_WRITE}))
+        {
+            if ($u =~ /^@/)
+            {
+                push(
+                    @$group_list,
+                    {
+                        GroupID     => substr($u, 1),
+                        AccessRight => $disallow // 'read/write'
+                    }
+                );
+            }
+            else
+            {
+                push(
+                    @$user_list,
+                    {
+                        UserID      => $u,
+                        AccessRight => $disallow // 'read/write'
+                    }
+                );
+            }
+        }
+    }
+
+    if (defined($OPTS{LIST_READ}))
+    {
+        foreach my $u (split(':', $OPTS{LIST_READ}))
+        {
+            if ($u =~ /^@/)
+            {
+                push(
+                    @$group_list,
+                    {
+                        GroupID     => substr($u, 1),
+                        AccessRight => $disallow // 'readonly'
+                    }
+                );
+            }
+            else
+            {
+                push(
+                    @$user_list,
+                    {
+                        UserID      => $u,
+                        AccessRight => $disallow // 'readonly'
+                    }
+                );
+            }
+        }
+    }
+}
+
+sub _get_access_zone
+{
+    my ($zone_list) = @_;
+
+    my ($name, $mode) = split(':', $OPTS{ZONE});
+
+    push(
+        @$zone_list,
+        {
+            ZoneName => $name,
+            Access   => $mode
+        }
+    );
+}
+
+sub share_modify
+{
+    my ($proto) = @_;
+    my $res;
+
+    if (!defined $OPTS{SHARE_NAME})
+    {
+        if ($proto eq 'cifs')
+        {
+            print_log(LOG_ERR, "check pararm\n");
+            print_help_cifs(1);
+        }
+        else
+        {
+            print_log(LOG_ERR, "Not Supported Yet\n");
+        }
+
+        return 1;
+    }
+
+    my %arguments = (ShareName => $OPTS{SHARE_NAME});
+    my %entity    = ();
+
+    given ($proto)
+    {
+        when ('cifs')
+        {
+            if (defined($OPTS{SW_READONLY}))
+            {
+                $entity{ShareRight} = 'readonly';
+            }
+
+            if (defined($OPTS{SW_WRITABLE}))
+            {
+                $entity{ShareRight} = 'read/write';
+            }
+
+            if (defined($OPTS{MOD_AUDIT}))
+            {
+                $entity{CIFSoption}{AuditOn} = $OPTS{MOD_AUDIT} // 'off';
+            }
+
+            if (defined($OPTS{MOD_VIRUS}))
+            {
+                $entity{CIFSoption}{VirusOn} = $OPTS{MOD_VIRUS} // 'off';
+            }
+
+            if (defined($OPTS{MOD_TRASH}))
+            {
+                $entity{CIFSoption}{TrashOn} = $OPTS{MOD_TRASH} // 'off';
+            }
+
+            $res = __call_rest_api(
+                'cluster/share/cifs/update',
+                {
+                    argument => \%arguments,
+                    entity   => \%entity
+                },
+                API_TIMEOUT
+            );
+        }
+        when ('nfs')    { }
+        when ('ftp')    { }
+        when ('afp')    { }
+        when ('webdav') { }
+    }
+
+    return defined($res) ? 0 : 1;
+}
+
+sub share_remove
+{
+    my ($proto) = @_;
+
+    if (!defined $OPTS{SHARE_NAME})
+    {
+        if ($proto eq 'cifs')
+        {
+            print_log(LOG_ERR, "check pararm\n");
+            print_help_cifs(1);
+        }
+        else
+        {
+            print_log(LOG_ERR, "Not Supported Yet\n");
+        }
+
+        return 1;
+    }
+
+    my %arguments = (ShareName => [$OPTS{SHARE_NAME}]);
+    my %entity    = ();
+
+    my $res = __call_rest_api(
+        'cluster/share/delete',
+        {
+            argument => \%arguments,
+            entity   => \%entity
+        },
+        API_TIMEOUT
+    );
+
+    return defined($res) ? 0 : 1;
+}
+
+sub cifs_filter
+{
+    my ($proto) = @_;
+
+    print_log(LOG_ERR, "Not Supported Yet\n");
+
+    if (!defined($OPTS{SHARE_NAME}))
+    {
+        print_log(LOG_ERR, "check pararm\n");
+        return 1;
+    }
+
+    return 1;
+}
+
+sub cifs_dfs
+{
+    print_log(LOG_ERR, "Not Supported Yet\n");
+
+    return 1;
+}
+
+# {"ext type":"N/A","ext filter":"N/A","read list":"@plugdisk","size filter":"N/A","write list":"admin","path":"/LV/share/고객자료실","audit":"on","trash":"on","hosts allow":"","ap":"read"
+sub _cifs_list_add
+{
+    my ($list_json, $share_name, $data) = @_;
+    my %share_info = ();
+
+    my $host_list  = "";
+    my $read_list  = "";
+    my $write_list = "";
+
+    foreach my $zone_hash (@{$data->{AccessZone}})
+    {
+        if ($zone_hash->{Access} eq 'read/write')
+        {
+            $host_list = $host_list . " " . $zone_hash->{ZoneInfo};
+        }
+    }
+
+    foreach my $user_hash (@{$data->{AccessUser}})
+    {
+        if ($user_hash->{AccessRight} eq 'read/write')
+        {
+            $write_list = $write_list . " " . $user_hash->{UserID};
+        }
+        elsif ($user_hash->{AccessRight} eq 'allow')
+        {
+            $write_list = $write_list . " " . $user_hash->{UserID};
+        }
+        elsif ($user_hash->{AccessRight} eq 'readonly')
+        {
+            $read_list = $read_list . " " . $user_hash->{UserID};
+        }
+    }
+
+    foreach my $group_hash (@{$data->{AccessGroup}})
+    {
+        if ($group_hash->{AccessRight} eq 'read/write')
+        {
+            $write_list = $write_list . " @" . $group_hash->{UserID};
+        }
+        elsif ($group_hash->{AccessRight} eq 'allow')
+        {
+            $write_list = $write_list . " @" . $group_hash->{UserID};
+        }
+        elsif ($group_hash->{AccessRight} eq 'readonly')
+        {
+            $read_list = $read_list . " @" . $group_hash->{UserID};
+        }
+    }
+
+    %share_info = (
+        'path'        => $data->{SharePath},
+        'read list'   => $read_list,
+        'write list'  => $write_list,
+        'hosts allow' => $host_list,
+        'Hidden'      => $data->{CIFSoption}{HiddenShare},
+        'guest allow' => $data->{CIFSoption}{GuestAllow},
+        'audit'       => $data->{CIFSoption}{AuditOn},
+        'ap'          => 'write',                            # TODO
+        'ext type'    => 'N/A',                              # TODO
+        'ext type'    => 'N/A',                              # TODO
+        'ext filter'  => 'N/A',                              # TODO
+        'size filter' => 'N/A',                              # TODO
+        'trash'       => 'N/A',                              # TODO
+    );
+
+    $list_json->{$share_name} = \%share_info;
+}
+
+sub _cifs_list_print
+{
+    my @args = @_;
+
+    my (
+        $name,
+        $ap,
+        $trash,
+        $audit,
+        $wlist,
+        $rlist,
+        $sfilter,
+        $efilter,
+        $f_type,
+        $hallow,
+        $path
+    ) = @args;
+
+    printf "%-16s", "$name";
+    printf "%-8s",  "|$ap";
+    printf "%-8s",  "|$trash";
+    printf "%-8s",  "|$audit";
+    printf "%-16s", "|$wlist";
+    printf "%-16s", "|$rlist";
+    printf "%-16s", "|$sfilter";
+    printf "%-16s", "|$efilter";
+    printf "%-16s", "|$f_type";
+    printf "%-16s", "|$hallow";
+    printf "%-16s", "|$path";
+    printf "|\n";
+}
+
+sub share_list
+{
+    my ($proto)   = @_;
+    my $res       = undef;
+    my %list_json = ();
+    my %arguments = ();
+    my %entity    = ();
+
+    if (defined($OPTS{SHARE_NAME}))
+    {
+        %arguments = (ShareName => $OPTS{SHARE_NAME});
+
+        $res = __call_rest_api(
+            "cluster/share/$proto/info",
+            {
+                argument => \%arguments,
+                entity   => \%entity
+            },
+            API_TIMEOUT,
+            1,
+        );
+
+        return 1 if (!defined($res));
+
+        if ($proto eq 'cifs')
+        {
+            _cifs_list_add(\%list_json, $OPTS{SHARE_NAME}, $res->{entity}[0]);
+        }
+        else
+        {
+            print_log(LOG_ERR, "Not Supported Yet\n");
+        }
+    }
+    else
+    {
+        $res = __call_rest_api(
+            "cluster/share/$proto/list",
+            {
+                argument => \%arguments,
+                entity   => \%entity
+            },
+            API_TIMEOUT,
+            1,
+        );
+
+        return 1 if (!defined($res));
+
+        foreach my $item (@{$res->{entity}})
+        {
+#            print Dumper ($item);
+            %arguments = (ShareName => $item->{ShareName});
+
+            $res = __call_rest_api(
+                "cluster/share/$proto/info",
+                {
+                    argument => \%arguments,
+                    entity   => \%entity
+                },
+                API_TIMEOUT,
+                1,
+            );
+
+            return 1 if (!defined($res));
+
+            if ($proto eq 'cifs')
+            {
+                _cifs_list_add(
+                    \%list_json,
+                    $item->{ShareName},
+                    $res->{entity}[0]
+                );
+            }
+            else
+            {
+                print_log(LOG_ERR, "Not Supported Yet\n");
+            }
+        }
+    }
+
+    # Get all detailed share info
+    if (defined($OPTS{SW_JSON}))
+    {
+        print encode_json(\%list_json);
+    }
+    else
+    {
+        print "============== Share List Info ===================\n";
+
+        _cifs_list_print(
+            'share name',
+            'acc-pri',
+            'trash',
+            'audit',
+            'write list',
+            'read list',
+            'size filter',
+            'ext filter',
+            'ext type',
+            'hosts allow',
+            'share path'
+        );
+
+        foreach my $st (sort(keys(%list_json)))
+        {
+            _cifs_list_print(
+                $st,
+                $list_json{$st}{'ap'},
+                $list_json{$st}{'trash'},
+                $list_json{$st}{'audit'},
+                $list_json{$st}{'write list'},
+                $list_json{$st}{'read list'},
+                $list_json{$st}{'size filter'} // 'N/A',
+                $list_json{$st}{'ext filter'}  // 'N/A',
+                $list_json{$st}{'ext type'}    // 'N/A',
+                $list_json{$st}{'hosts allow'},
+                $list_json{$st}{'path'}
+            );
+        }
+    }
+    return 0;
+}
+
+__END__
+
+=encoding utf8
+
+=head1 NAME
+
+sharectl - 공유 관리 CLI
+
+=head1 SYNOPSIS
+
+=head1 DESCRIPTION
+
+=head1 COPYRIGHT AND LICENSE
+
+Copyright 2015-2021. Gluesys Co., Ltd. All rights reserved.
+
+=head1 SEE ALSO
+
+sharectl
+
+=cut

@@ -1,0 +1,73 @@
+#!/bin/sh
+
+[ -f /var/lib/gms/functions ] && . /var/lib/gms/functions
+
+export PERL5LIB=$PERL5LIB:/usr/gms/perl5/lib/perl5
+
+log "INFO" "[NODE] Migration for 2.0.7.18"
+
+#if [ -e '/usr/gms/misc/mds' ]; then
+#    log "INFO" "[NODE] Backing up etcd data..."
+#
+#    /usr/gms/bin/acetcdctl dump
+#
+#    if [ $? -ne 0 ]; then
+#        log "ERR" "[NODE] Failed to dump etcd data with acetcdctl"
+#        return 1
+#    fi
+#
+#    log "INFO" "[NODE] Backing up supervisor configuration file..."
+#
+#    mv /etc/supervisord.conf /etc/supervisord.conf.upgsave
+#
+#    log "INFO" "[NODE] backup: /etc/supervisord.conf.upgsave"
+#
+#    log "INFO" "[NODE] Shutting down etcd..."
+#
+#    supervisorctl stop etcd
+#
+#    log "INFO" "[NODE] Updating supervisord config..."
+#
+#    while read -r rline
+#    do
+#        if [[ "${rline:0:2}" == "--" ]]; then
+#            rline="    $rline"
+#        fi
+#
+#        if [[ "$rline" =~ --advertise-client-urls ]]; then
+#            log "INFO" "[NODE] Wrong client listen port will be changed..."
+#            log "INFO" "[NODE] Before : $rline"
+#
+#            rline="    `echo $rline | sed -e 's/2380/2379/g;'`"
+#
+#            log "INFO" "[NODE] After  : $rline"
+#        fi
+#
+#        echo "$rline" >> /etc/supervisord.conf
+#    done < /etc/supervisord.conf.upgsave
+#
+#    supervisorctl update
+#
+#    ETCD_STATUS=1
+#    COUNT=30
+#
+#    while [ $COUNT -gt 0 ];
+#    do
+#        if [[ `supervisorctl status etcd` =~ RUNNING ]]; then
+#            ETCD_STATUS=0
+#            break
+#        fi
+#
+#        COUNT=$((COUNT-1))
+#        sleep 1;
+#    done
+#
+#    if [ $ETCD_STATUS -ne 0 ]; then
+#        log "INFO" "[NODE] Failed to start etcd"
+#        exit 1
+#    fi
+#
+#    log "INFO" "[NODE] etcd has started successfully"
+#fi
+
+log "INFO" "[NODE] Migration is done"

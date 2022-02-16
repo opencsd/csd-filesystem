@@ -1,0 +1,160 @@
+# Build dependencies
+BuildRequires: gettext
+#BuildRequires: gcc, gcc-c++, make, automake, autoconf
+BuildRequires: jq
+
+# Local system dependencies
+Requires: redhat-lsb-core
+Requires: chkconfig
+Requires: NetworkManager
+Requires: rsyslog
+Requires: net-tools
+Requires: xfsprogs, parted, gdisk, ioping
+Requires: authconfig, krb5-workstation, krb5-server
+Requires: ntp, ntpdate
+Requires: psmisc
+Requires: dmidecode
+Requires: pciutils
+Requires: cpupowerutils
+Requires: tuned
+Requires: ipmitool
+Requires: lvm2 >= 7:2.02.177-4.el7
+Requires: lsscsi >= 0.27
+Requires: smartmontools >= 1:6.5-1.el7
+Requires: nvme-cli
+Requires: opensm
+
+# Filing dependencies
+Requires: glusterfs
+Requires: glusterfs-coreutils
+Requires: glusterfs-server
+Requires: glusterfs-extra-xlators
+Requires: glusterfs-rdma
+Requires: glusterfs-events
+
+Requires: samba >= 4.9
+Requires: samba-client >= 4.9
+Requires: samba-common-libs >= 4.9
+Requires: samba-winbind >= 4.9
+Requires: samba-vfs-glusterfs >= 4.9
+Requires: samba-winbind-clients >= 4.9
+
+Requires: nfs-utils
+Requires: nfs-ganesha >= 2.8
+Requires: nfs-ganesha-vfs >= 2.8
+Requires: nfs-ganesha-gluster >= 2.8
+
+Requires: netatalk
+
+Requires: proftpd
+
+# Cluster dependencies
+Requires: etcd
+Requires: ctdb >= 4.9
+Requires: zeromq >= 3
+Requires: openssh-server, openssh-clients
+Requires: girasole
+Requires: eflowd >= 0.1.1
+
+# Management dependencies
+Requires: perl > 5.16.3-292
+Requires: perl-CPAN
+Requires: mariadb-server, mariadb-libs, mariadb-devel
+Requires: createrepo
+Requires: td-agent >= 3.0
+Requires: influxdb
+Requires: netdata
+Requires: grafana
+Requires: libzstd
+Requires: nscd
+Requires: nss-pam-ldapd
+Requires: openldap-clients
+Requires: libev
+Requires: gettext-libs
+Requires: jq
+Requires: python-pip
+
+# Utilities
+Requires: tmux, expect, bash-completion, iotop, dstat, yum-utils, abrt
+
+# Perl packages
+Requires: perl(enum)
+Requires: perl(AnyEvent)
+Requires: perl(AnyEvent::HTTP)
+Requires: perl(Cache::FileCache)
+Requires: perl(Coro)
+Requires: perl(Coro::Multicore)
+Requires: perl(Config::INI::Reader)
+Requires: perl(Config::INI::Writer)
+Requires: perl(Crypt::AES::CTR)
+Requires: perl(Crypt::DES)
+Requires: perl(Crypt::OpenSSL::RSA)
+Requires: perl(CryptX)
+Requires: perl(Data::Dump)
+Requires: perl(Data::MessagePack)
+Requires: perl(Data::Validate::IP)
+Requires: perl(Data::Validator)
+Requires: perl(Data::Validator::Recursive)
+Requires: perl(Date::Parse)
+Requires: perl(DateTime)
+Requires: perl(DateTime::Format::Strptime)
+Requires: perl(Devel::NYTProf)
+Requires: perl(Devel::StackTrace)
+Requires: perl(Dir::Flock)
+Requires: perl(DB_File)
+Requires: perl(DBIx::Class)
+Requires: perl(Env)
+Requires: perl(Etcd)
+Requires: perl(EV)
+Requires: perl(File::chmod::Recursive)
+Requires: perl(File::Copy::Recursive)
+Requires: perl(File::ShareDir)
+Requires: perl(File::Slurp)
+Requires: perl(Filesys::Df)
+Requires: perl(Filesys::Statvfs)
+Requires: perl(Guard)
+Requires: perl(Hash::Merge)
+Requires: perl(IO::Interface::Simple)
+Requires: perl(IO::Socket::SSL) > 2.0
+Requires: perl(IPC::Shareable)
+Requires: perl(Linux::ACL)
+Requires: perl(Locale::TextDomain)
+Requires: perl(Log::Dispatch::Syslog)
+Requires: perl(LWP::Protocol::https)
+Requires: perl(Memory::Usage)
+Requires: perl(Module::Load)
+Requires: perl(Module::Loaded)
+Requires: perl(Mojo::JWT)
+Requires: perl(Mojolicious)
+Requires: perl(Mojolicious::Plugin::SecureCORS)
+Requires: perl(Mojolicious::Plugin::OpenAPI)
+Requires: perl(Mojolicious::Plugin::SwaggerUI)
+Requires: perl(MojoX::Log::Log4perl) >= 0.12
+Requires: perl(Moose) >= 2.2010-2
+Requires: perl(Mouse) >= 2.5.6-2
+Requires: perl(MouseX::NativeTraits)
+Requires: perl(MouseX::Traits)
+Requires: perl(MouseX::Foreign)
+Requires: perl(Net::Interface)
+Requires: perl(Net::IP)
+Requires: perl(Net::Netmask)
+Requires: perl(Net::OpenSSH)
+Requires: perl(Net::Ping)
+Requires: perl(Net::SSLeay)
+Requires: perl(Number::Bytes::Human)
+Requires: perl(Parse::DMIDecode)
+Requires: perl(Proc::Exists)
+Requires: perl(Readonly)
+Requires: perl(String::Random)
+Requires: perl(String::Util)
+Requires: perl(Switch)
+Requires: perl(Sys::Hostname::FQDN)
+Requires: perl(Sys::Syslog)
+Requires: perl(Term::ProgressBar)
+Requires: perl(Test::Class)
+Requires: perl(Test::MockModule)
+Requires: perl(Text::Markdown::Hoedown)
+Requires: perl(Time::Out)
+Requires: perl(Tree::Simple)
+Requires: perl(YAML)
+Requires: perl(ZMQ::FFI) >= 1.18

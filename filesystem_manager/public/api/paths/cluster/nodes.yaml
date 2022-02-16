@@ -1,0 +1,10 @@
+post:
+  x-mojo-to: 'Cluster::Dashboard#node_status'
+  operationId: cluster_dashboard_node_status
+  tags:
+    - cluster
+  responses:
+    200:
+      $ref: '#/components/responses/NodeStatuses'
+    401:
+      $ref: '#/components/responses/Unauthorized'

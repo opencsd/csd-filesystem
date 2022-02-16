@@ -1,0 +1,17 @@
+description: Usages of each volumes
+content:
+  application/json:
+    schema:
+      allOf:
+        - $ref: '#/components/schemas/DefaultResponse'
+        - type: object
+          properties:
+            entity:
+              type: object
+              properties:
+                is_available:
+                  type: string
+                data:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/FsUsage'

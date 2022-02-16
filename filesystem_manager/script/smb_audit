@@ -1,0 +1,88 @@
+#!/usr/bin/env perl
+
+use v5.14;
+
+use strict;
+use warnings;
+use utf8;
+
+use lib '/usr/gms/libgms';
+
+use GMS::Common::IPC;
+
+if (!open(my $fh, '>', '/tmp/smb_audit.log'))
+{
+    die "Failed to open file: /tmp/smb_audit.log: $!";
+}
+
+select((select($fh), $|++)[0]);
+
+while (my $line = <>)
+{
+    chomp($line);
+
+    my @columns = split(/\|\|/, $line);
+
+    print $fh "$columns[0]\n";
+    print $fh "$columns[1]\n";
+    print $fh "$columns[2]\n";
+
+    my $regex_smb    = qr/Auth:\s+\[(?<smb>[^,]+).*\]\s+/;
+    my $regex_user   = qr/user\s+\[[^\]]+\]\\\[(?<user>[^\]]+)\]\s+/;
+    my $regex_ntlm   = qr/with\s+\[(?<ntlm>[^\]]+)\]\s+/;
+    my $regex_status = qr/status\s+\[(?<status>[^\]]+)\]\s+/;
+    my $regex_host   = qr/workstation\s+\[(?<host>[^\]]+)\]\s+/;
+    my $regex_ip = qr/remote\s+host\s+\[[^:]+:(?<ip>[^:]+):(?<port>\d+)\]/x /;
+
+    next
+        if (
+        $columns[2] !~ m/$regex_smb
+                            $regex_user
+                            at\s+\[[^\]]+\]\s+
+                            $regex_ntlm
+                            $regex_status
+                            $regex_host
+                            $regex_ip/x
+        );
+
+    next
+        if ($+{status} ne 'NT_STATUS_OK'
+        && $+{status} ne 'NT_STATUS_WRONG_PASSWORD');
+
+    my $msg, $level;
+
+    if ($+{status} eq 'NT_STATUS_OK')
+    {
+        $msg   = "User \"$+{user}\" has logged in via $+{smb}";
+        $level = 'info';
+    }
+    elsif ($+{status} eq 'NT_STATUS_WRONG_PASSWORD')
+    {
+        $msg   = "User \"$+{user}\" failed to login in via $+{smb}";
+        $level = 'warn';
+    }
+
+    my $result = GMS::Common::IPC::exec(
+        cmd  => '/usr/bin/eflowdctl',
+        args => [
+            'event',
+            'create',
+            "--level=$level",
+            "--from=$columns[1]",
+            '--code=SMB_LOGIN',
+            "--msg=$msg",
+            "--details=SMB=$+{smb}",
+            "--details=NTLM=$+{ntlm}",
+            "--details=Host=$+{host}",
+            "--details=User=$+{user}",
+            "--details=IP=$+{ip}:$+{port}",
+        ]
+    );
+
+    next if (defined($result) && !$result->{status});
+
+    syslog('err',
+        "Failed to create SMB_LOGIN event. (msg: $message): $result->{err}");
+}
+
+close($fh);

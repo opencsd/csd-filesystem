@@ -1,0 +1,236 @@
+#!/bin/sh
+
+[ -f /var/lib/gms/functions ] && . /var/lib/gms/functions
+
+NODES=($(cat /etc/hosts \
+            | grep 'made by gms' \
+            | cut -d ' ' -f2 \
+            | grep -v -- '-m$'))
+
+function add_datasrc_dashboard
+{
+    local JSON="{
+            \"name\"     : \"influxdb\",
+            \"type\"     : \"influxdb\",
+            \"url\"      : \"http://127.0.0.1:8086\",
+            \"access\"   : \"proxy\",
+            \"database\" : \"anystor\"
+        }"
+
+    curl --cookie /tmp/tmpcookies.txt -XPOST \
+        http://127.0.0.1:8890/api/datasources -H "Content-Type: application/json" \
+        -d"$JSON" &>/dev/null
+}
+
+function add_cluster_dashboard
+{
+    local JSON='{"dashboard":'`cat /usr/gms/misc/grafana/grafana_cluster.json`'}'
+
+    # dashboard->rows[]->[0]->panels[]를 순회
+    #
+    # 1. 각 패널 별로 targets[]를 순회
+    # 2. 노드 목록을 순회하며 태그를 만들어
+    #    dashboard->rows[]->[0]->panels[]->targets[]에 삽입
+    #    - 1번 노드는 condition 제거
+    #
+    # 노드명으로 태그를 만들어서 삽입
+    local NUMOFPANELS="`echo $JSON | jq '.dashboard.rows[0].panels | length'`"
+
+    for i in `seq 0 $((NUMOFPANELS-1))`;
+    do
+        NUMOFTARGETS="`echo $JSON | jq \".dashboard.rows[0].panels[$i].targets | length\"`"
+
+        for j in `seq 0 $((NUMOFTARGETS-1))`;
+        do
+            for NODE in "${NODES[@]}"
+            do
+                TAG="{
+                    \"condition\" : \"OR\",
+                    \"key\"       : \"hostname\",
+                    \"operator\"  : \"=\",
+                    \"value\"     : \"${NODE}\"
+                }"
+
+                if [[ "$NODE" =~ .+-1 ]]; then
+                    TAG="`echo $TAG | jq 'del(.condition)'`"
+                fi
+
+                JSON="`echo $JSON | jq \".dashboard.rows[0].panels[$i].targets[$j].tags += [ $TAG ]\"`"
+            done
+        done
+    done
+
+    #log "INFO" "Generated records: `echo $JSON | jq .`"
+
+    curl --cookie /tmp/tmpcookies.txt -XPOST \
+        http://127.0.0.1:8890/api/dashboards/db -H "Content-Type: application/json" \
+        -d"$JSON" &>/dev/null
+}
+
+function add_node_dashboard
+{
+    local JSON='{"dashboard":'`cat /usr/gms/misc/grafana/grafana_node.json`'}'
+
+    # 초기 행 개수를 1로 시작하여 dashboard->rows[]를 순회
+    #
+    # 1. _id = 행 개수 * 50
+    #
+    # 2. dashboard->rows[]->panels[]->[0]의 데이터를 템플릿으로 하여
+    #   - ->id    => 행 개수 * 50
+    #   - ->title => {{hostname}}을 노드명으로 치환
+    #   - 치환된 데이터를 dashboard->rows[]->panels[]에 삽입
+    #   - _id를 1만큼 증가하며 반복
+    #
+    # 3. 행 개수를 1만큼 증가
+
+    local NUMOFROWS="`echo $JSON | jq \".dashboard.rows | length\"`"
+
+    for ROW in `seq 0 $((NUMOFROWS-1))`;
+    do
+        ID=$((50 * (ROW+1)))
+        TMPL="`echo $JSON | jq \".dashboard.rows[$ROW].panels[0]\"`"
+
+        echo $TMPL
+
+        JSON="`echo $JSON | jq \"del(.dashboard.rows[$ROW].panels[0])\"`"
+
+        for NODE in "${NODES[@]}";
+        do
+            TMPL_NODE="$TMPL"
+            TMPL_NODE="`echo $TMPL_NODE | jq \".id = $ID\"`";
+            TMPL_NODE="`echo $TMPL_NODE | sed -e \"s/{{hostname}}/$NODE/g;\"`"
+
+            JSON="`echo $JSON | jq \".dashboard.rows[$ROW].panels += [ $TMPL_NODE ]\"`"
+
+            ID=$((ID+1))
+        done
+    done
+
+    #log "INFO" "Generated records: `echo $JSON | jq .`"
+
+    curl --cookie /tmp/tmpcookies.txt -XPOST \
+        http://127.0.0.1:8890/api/dashboards/db -H "Content-Type: application/json" \
+        -d"$JSON" &>/dev/null
+}
+
+function remove_supervisord_section
+{
+    local SECTION=$1
+
+    if [ -z "$SECTION" ]; then
+        log "ERR" "supervisord section is not specified"
+        return 1
+    fi
+
+    supervisorctl stop $SECTION
+
+    local NEW_CONF=
+    local FLAG=0
+
+    while read -r LINE
+    do
+        if [[ $FLAG -eq 1 && "$LINE" =~ ^\[.*\] ]]; then
+            FLAG=0
+        fi
+
+        # NOTE: 2018년 05월 16일 19:46: by P.G.
+        # 동일 이름의 항목이 있는 경우를 위해 플래그를 중복 검사
+        if [[ $FALG -eq 0 && "$LINE" =~ ^\[.*:$SECTION\] ]]; then
+            FLAG=1
+        fi
+
+        if [[ $FLAG -eq 1 ]]; then
+            continue
+        fi
+
+        if [ "${LINE:0:1}" == "-" ]; then
+            LINE="    $LINE"
+        fi
+
+        printf -v NEW_CONF '%s\n%s' "$NEW_CONF" "$LINE"
+    done < /etc/supervisord.conf
+
+    echo "$NEW_CONF" > /etc/supervisord.conf
+
+    supervisorctl update
+
+    sleep 5
+
+    return 0
+}
+
+log "INFO" "[NODE] Migration for 2.0.5.7"
+
+if [ -e '/usr/gms/misc/mds' ]; then
+    log "INFO" "[NODE] Logging in to grafana..."
+
+    curl --cookie /tmp/cookies.txt --cookie-jar /tmp/tmpcookies.txt -XPOST \
+        http://127.0.0.1:8890/login -H "Content-Type: application/json" \
+        -d '{"user":"admin","email":"","password":"admin"}' &>/dev/null
+
+    if [ $? != 0 ]; then
+        log "ERR" "[NODE] Failed to login into grafana"
+        exit $?
+    fi
+
+    log "INFO" "[NODE] Removing prometheus datasource..."
+
+    curl --cookie /tmp/tmpcookies.txt -XDELETE \
+        http://127.0.0.1:8890/api/datasources/name/prometheus \
+        -H "Content-Type: application/json" &>/dev/null
+
+    log "INFO" "[NODE] Adding influxdb datasource..."
+
+    add_datasrc_dashboard
+
+    if [ $? -ne 0 ]; then
+        log "ERR" "[NODE] Failed to add influxdb datasource for dashboard"
+        exit $?
+    fi
+
+    log "INFO" "[NODE] Removing prometheus cluster dashboard..."
+
+    curl --cookie /tmp/tmpcookies.txt -XDELETE \
+        http://127.0.0.1:8890/api/dashboards/db/prometheus-cluster \
+        -H "Content-Type: application/json" &>/dev/null
+
+    log "INFO" "[NODE] Adding new cluster dashboard..."
+
+    add_cluster_dashboard
+
+    if [ $? -ne 0 ]; then
+        log "ERR" "[NODE] Failed to add cluster dashboard"
+        exit $?
+    fi
+
+    log "INFO" "[NODE] Removing prometheus node dashboard..."
+
+    curl --cookie /tmp/tmpcookies.txt -XDELETE \
+        http://127.0.0.1:8890/api/dashboards/db/prometheus-node \
+        -H "Content-Type: application/json" &>/dev/null
+
+    log "INFO" "[NODE] Adding new node dashboard..."
+
+    add_node_dashboard
+
+    if [ $? -ne 0 ]; then
+        log "ERR" "[NODE] Failed to add node dashboard"
+        exit $?
+    fi
+fi
+
+remove_supervisord_section "node_exporter"
+
+if [ $? -ne 0 ]; then
+    log "ERR" "[NODE] Failed to remove node_exporter from supervisord"
+    exit $?
+fi
+
+remove_supervisord_section "prometheus"
+
+if [ $? -ne 0 ]; then
+    log "ERR" "[NODE] Failed to remove prometheus from supervisord"
+    exit $?
+fi
+
+log "INFO" "[NODE] Migration is done"

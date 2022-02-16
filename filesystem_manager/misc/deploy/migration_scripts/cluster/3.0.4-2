@@ -1,0 +1,34 @@
+#!/bin/sh
+
+[ -f /var/lib/gms/functions ] && . /var/lib/gms/functions
+
+log "INFO" "[CLUSTER] Migration for 3.0.4-2"
+
+log "INFO" "[CLUSTER] Reloading Gluster volume-pool info..."
+
+perl -I/usr/gms/libgms -MCluster::Volume::Gluster -e 'Cluster::Volume::Gluster->new->reload_vpool_info()';
+
+if [ $? != 0 ]; then
+  log "ERR" "[CLUSTER] Failed to reload Gluster volume-pool info"
+  exit 255
+fi
+
+log "INFO" "[CLUSTER] Reloading Gluster volume info..."
+
+perl -I/usr/gms/libgms -MCluster::Volume::Gluster -e 'Cluster::Volume::Gluster->new->reload_volume_info()';
+
+if [ $? != 0 ]; then
+  log "ERR" "[CLUSTER] Failed to reload Gluster volume info"
+  exit 255
+fi
+
+log "INFO" "[CLUSTER] Reloading External volume-pool/volume info..."
+
+perl -I/usr/gms/libgms -MCluster::Volume::External -e 'Cluster::Volume::External->new->reload()';
+
+if [ $? != 0 ]; then
+  log "ERR" "[CLUSTER] Failed to reload External volume-pool/volume info"
+  exit 255
+fi
+
+log "INFO" "[CLUSTER] Migration is done"

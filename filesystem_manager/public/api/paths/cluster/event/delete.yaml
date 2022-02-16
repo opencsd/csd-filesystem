@@ -1,0 +1,32 @@
+post:
+  x-mojo-to: 'Cluster::Event#event_delete'
+  operationId: cluster_event_delete
+  tags:
+    - cluster
+    - event
+  requestBody:
+    required: true
+    description: Request
+    content:
+      application/json:
+        schema:
+          type: object
+      application/x-www-form-urlencoded:
+        schema:
+          type: object
+  responses:
+    200:
+      description: number of events
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/DefaultResponse'
+              - type: object
+                properties:
+                  entity:
+                    type: integer
+    204:
+      description: Events are deleted successfully.
+    401:
+      $ref: '#/components/responses/Unauthorized'

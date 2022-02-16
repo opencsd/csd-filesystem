@@ -1,0 +1,10 @@
+post:
+  x-mojo-to: 'Auth::LDAP#disable'
+  operationId: auth_ldap_disable
+  tags:
+    - auth
+  responses:
+    204:
+      description: LDAP authentication disabled successfully.
+    401:
+      $ref: '#/components/responses/Unauthorized'

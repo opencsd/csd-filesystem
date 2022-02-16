@@ -1,0 +1,2 @@
+export PATH="/usr/gms/bin${PATH+:}${PATH}"
+export PERL5LIB="/usr/gms/libgms:/usr/gms/lib:/usr/girasole/lib${PERL5LIB+:}${PERL5LIB}"

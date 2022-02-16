@@ -1,0 +1,9 @@
+#!/bin/sh
+
+[ -f /var/lib/gms/functions ] && . /var/lib/gms/functions
+
+log "INFO" "[NODE] Migration for 2.0.4.7"
+
+log "INFO" "[NODE] removes old repository configuration..."
+
+rm -f /etc/yum.repos.d/ac2*.repo

@@ -1,0 +1,18 @@
+#commands.act
+#input_commnad:::revert_command
+systemctl enable ntpd:::NOP
+systemctl enable glusterd:::NOP
+systemctl enable glusterfsd:::NOP
+systemctl disable firewalld:::NOP
+systemctl stop firewalld:::NOP
+cp -af %GMSDIR/misc/etc/rsyslog.d/* /etc/rsyslog.d:::NOP
+mkdir -p /var/log/journal
+systemd-tmpfiles --create --prefix /var/log/journal
+systemctl restart rsyslog:::NOP
+systemctl restart systemd-journald:::NOP
+systemctl enable fstrim.service:::NOP
+systemctl enable fstrim.timer:::NOP
+systemctl start fstrim.timer:::NOP
+mv /var/lib/glusterd/hooks /var/lib/glusterd/hooks.backup:::mv /var/lib/glusterd/hooks.backup /var/lib/glusterd/hooks
+systemctl start gms:::NOP
+systemctl enable gms:::NOP

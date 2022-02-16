@@ -1,0 +1,7 @@
+description: present ADS authentication config
+type: object
+properties:
+  Admin:
+    type: string
+  Password:
+    type: string

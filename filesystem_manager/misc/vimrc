@@ -1,0 +1,42 @@
+if has('autocmd')
+    filetype plugin indent on
+endif
+
+if has('syntax') && !exists('g:syntax_on')
+    syntax on
+endif
+
+set encoding=utf8
+
+set restorescreen
+
+set number
+set ruler
+
+set tabstop=4
+set softtabstop=4
+set shiftwidth=4
+
+set expandtab
+set smarttab
+set autoindent
+set smartindent
+
+set showmatch
+set matchtime=2
+
+set list
+set listchars=tab:>-,trail:.,extends:>,precedes:<
+
+set incsearch
+set ignorecase
+set smartcase
+set wrapscan
+
+set statusline=%f\ %h%w%m%r\ %=%(%l,%c%V\ %=\ %P%)
+
+autocmd FileType c,cpp setlocal cindent expandtab tabstop=4 softtabstop=4 shiftwidth=4 textwidth=78
+autocmd FileType make setlocal noexpandtab tabstop=4 softtabstop=4 shiftwidth=4 textwidth=78
+autocmd FileType perl,python setlocal expandtab tabstop=4 softtabstop=4 shiftwidth=4 textwidth=78
+autocmd FileType html,xhtml,xml,css setlocal expandtab tabstop=2 softtabstop=2 shiftwidth=2
+autocmd FileType javascript setlocal noexpandtab tabstop=4 softtabstop=4 shiftwidth=4

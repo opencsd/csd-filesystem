@@ -1,0 +1,18 @@
+#!/bin/sh
+
+[ -f /var/lib/gms/functions ] && . /var/lib/gms/functions
+
+log "INFO" "[NODE] Migration for 3.0.3"
+
+sed -i -e '/<IfModule mod_vroot.c>/a DefaultRoot	/home/__internal/FTP_SHARE/' /etc/proftpd.conf
+sed -i -e '/<IfModule mod_vroot.c>/a VRootOptions	allowSymlinks' /etc/proftpd.conf
+sed -i -e '/<IfModule mod_vroot.c>/a VRootEngine	on' /etc/proftpd.conf
+
+systemctl restart proftpd
+
+if [ $? = 0 ]; then
+    log "INFO" "[NODE] proftpd restart."
+else
+    log "ERR" "[NODE] Failed to restart proftpd: $?"
+fi
+

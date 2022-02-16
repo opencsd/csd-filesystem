@@ -1,0 +1,35 @@
+post:
+  x-mojo-to: 'Cluster::Stage#info'
+  tags:
+    - cluster
+    - stage
+  operationId: cluster_stage_info
+  responses:
+    200:
+      description: Detailed stage information
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/DefaultResponse'
+              - type: object
+                properties:
+                  entity:
+                    type: object
+                    properties:
+                      Name:
+                        type: string
+                      Stage:
+                        type: string
+                      Status_Msg:
+                        type: string
+                      Total_Capacity:
+                        type: string
+                      Usage_Capacity:
+                        type: string
+                      Management:
+                        type: array
+                        items:
+                          type: string
+    401:
+      $ref: '#/components/responses/Unauthorized'

@@ -1,0 +1,35 @@
+#!/bin/sh
+
+[ -f /var/lib/gms/functions ] && . /var/lib/gms/functions
+
+log "INFO" "[CLUSTER] migration for 2.0.8.1"
+
+log "INFO" "[CLUSTER] Publish Demo License"
+
+perl -I/usr/gsm/lib -I/usr/gms/lib -e "
+use System::License;
+use Common::registry;
+use MIME::Base64;
+my \$license_obj = System::License->new();
+my \$shared_demo_license = \$license_obj->{ config }{ shared_demo_file };
+
+if ( ! open DLF, '>', \$shared_demo_license ) { exit 1; }
+my @timestamp = localtime;
+
+my \$duration = \$license_obj->{config}{demo_date};
+my \$decode_key = Common::registry::GET_DECODE_KEY;
+
+print DLF encode_base64(join(' ', @timestamp, \$duration, \$decode_key ));
+close DLF;
+
+\`chmod 440 \$shared_demo_license\`;
+
+exit 0;
+"
+
+if [ $? != 0 ]; then
+  log "ERR" "[CLUSTER] demo license issuing failed"
+fi
+
+log "INFO" "[CLUSTER] Migration is done"
+

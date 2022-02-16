@@ -1,0 +1,11 @@
+post:
+  x-mojo-to: 'Cluster::Dashboard#clientgraph'
+  operationId: cluster_dashboard_clientgraph
+  tags:
+    - cluster
+    - dashboard
+  responses:
+    200:
+      $ref: '#/components/responses/ClientConnections'
+    401:
+      $ref: '#/components/responses/Unauthorized'

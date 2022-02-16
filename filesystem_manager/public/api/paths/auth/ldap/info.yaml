@@ -1,0 +1,22 @@
+post:
+  x-mojo-to: 'Auth::LDAP#info'
+  operationId: auth_ldap_info
+  tags:
+    - auth
+  responses:
+    200:
+      description: LDAP authentication enabled successfully.
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/LDAPConfig'
+              - type: object
+                properties:
+                  entity:
+                    type: object
+                    properties:
+                      Enabled:
+                        type: boolean
+    401:
+      $ref: '#/components/responses/Unauthorized'

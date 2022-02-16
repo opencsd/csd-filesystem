@@ -1,0 +1,21 @@
+post:
+  x-mojo-to: 'Cluster::Initializer#contract'
+  operationId: cluster_init_contract
+  tags:
+    - cluster
+    - init
+  requestBody:
+    required: true
+    description: request
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            Manage_IP:
+              type: string
+  responses:
+    204:
+      description: This cluster is contracted successfully.
+    401:
+      $ref: '#/components/responses/Unauthorized'

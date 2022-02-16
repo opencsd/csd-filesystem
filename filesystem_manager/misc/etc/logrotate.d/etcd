@@ -1,0 +1,11 @@
+/var/log/etcd.log {
+    weekly
+    size 50M
+    rotate 12
+    copytruncate
+    missingok
+    notifempty
+    compress
+    dateext
+    create 0600 root root
+}

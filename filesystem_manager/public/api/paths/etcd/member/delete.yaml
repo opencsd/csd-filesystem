@@ -1,0 +1,27 @@
+post:
+  x-mojo-to: 'Etcd#del_member'
+  operationId: etcd_del_member
+  tags:
+      - etcd
+  requestBody:
+    required: true
+    description: 'Delete existing etcd member from cluster'
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            Cluster:
+              type: string
+            Name:
+              type: string
+            Force:
+              type: boolean
+              default: false
+          required:
+            - Name
+  responses:
+    204:
+      description: Etcd member is deleted successfully.
+    401:
+      $ref: '#/components/responses/Unauthorized'

@@ -1,0 +1,9 @@
+post:
+  x-mojo-to: 'Cluster::Dashboard#cluster_status'
+  operationId: cluster_dashboard_cluster_status
+  tags:
+    - cluster
+    - task
+  responses:
+    200:
+      $ref: '#/components/responses/ClusterStatus'

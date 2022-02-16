@@ -1,0 +1,61 @@
+#!/bin/bash
+
+[ -f /var/lib/gms/functions ] && . /var/lib/gms/functions
+
+log "INFO" "[CLUSTER] Migration for 3.1.0-1"
+
+declare -A MIG_KEYS=(
+    ["/ClusterHostInfo"]=""
+    ["/ClusterMeta"]="/Cluster/Meta"
+    ["/DnsInfo"]=""
+    ["/GlusterBrickInfo"]="/GlusterFS/Bricks"
+    ["/GlusterProcInfo"]="/GlusterFS/Operations"
+    ["/GlusterSnapshotInfo"]="/GlusterFS/Snapshots"
+    ["/GlusterTierInfo"]="/GlusterFS/Tiers"
+    ["/GlusterVolumeInfo"]="/Volume/GlusterFS"
+    ["/GroupInfo"]="/Groups"
+    ["/LocalVolume"]="/Volumes/Local"
+    ["/PrivateVolume"]="/Volumes/Private"
+    ["/RouteInfo"]=""
+    ["/ScheduleInfo"]="/Schedules"
+    ["/SecureInfo"]=""
+    ["/Session"]=""
+    ["/ShareInfo"]=""
+    ["/SingleVolume"]=""
+    ["/TimeInfo"]="/Time"
+    ["/UserInfo"]="/Users"
+    ["/VPoolInfo"]="/VPools"
+    ["/SMARTRawThresholdInfo"]="/SMART/RawThreshold"
+)
+
+for OLD_KEY in "${!MIG_KEYS[@]}";
+do
+    NEW_KEY="${MIG_KEYS[$OLD_KEY]}"
+
+    if [ "x$NEW_KEY" == "x" ]; then
+        etcdctl rm -r "$OLD_KEY";
+        continue;
+    fi
+
+    for KEY in "(`etcdctl ls -r $OLD_KEY`)";
+    do
+        VALUE="`etcdctl get $KEY 2>/dev/null`";
+
+        # is a directory
+        if [ $? -ne 0 ]; then
+            continue
+        fi
+
+        KEY2=${KEY//$OLD_KEY/$NEW_KEY}
+
+        echo "Migrating $KEY => $KEY2"
+
+        etcdctl set "$KEY2" "$VALUE"
+
+        if [ $? -ne 0 ]; then
+            echo "Failed to set $KEY2"
+            continue
+        fi
+    done
+done
+

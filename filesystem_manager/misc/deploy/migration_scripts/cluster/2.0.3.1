@@ -1,0 +1,19 @@
+#!/bin/sh
+
+[ -f /var/lib/gms/functions ] && . /var/lib/gms/functions
+
+log "INFO" "[CLUSTER] Migration for 2.0.0.0 -> 2.0.3.1"
+
+log "INFO" "[CLUSTER] altering gsm.tasks table..."
+
+for col in beep rsyslog smtp snmptrap;
+do
+    log "INFO" "[CLUSTER] delete column: ${col}_count"
+    mysql -u root -pgluesys\!\! -e "ALTER TABLE gsm.tasks DROP COLUMN ${col}_count"
+
+    log "INFO" "[CLUSTER] delete column: ${col}_latest"
+    mysql -u root -pgluesys\!\! -e "ALTER TABLE gsm.tasks DROP COLUMN ${col}_latest"
+done
+
+log "INFO" "[CLUSTER] add column: notified"
+mysql -u root -pgluesys\!\! -e "ALTER TABLE gsm.tasks ADD (notified BOOL NOT NULL DEFAULT 0)"

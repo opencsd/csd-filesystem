@@ -1,0 +1,32 @@
+#!/bin/sh
+
+[ -f /var/lib/gms/functions ] && . /var/lib/gms/functions
+
+NODES=($(cat /etc/hosts \
+            | grep 'made by gms' \
+            | cut -d ' ' -f2 \
+            | grep -v -- '-m$'))
+
+log "INFO" "[CLUSTER] Migration for 2.0.8.0"
+
+# add default timeout for exec functions
+log "INFO" "[CLUSTER] Updating cluster metadata..."
+
+perl -I/usr/gsm/lib -I/usr/gms/lib -e "
+use Cluster::MDSAdapter;
+my \$adp = Cluster::MDSAdapter->new();
+\$adp->set_key('ClusterMeta', '/timeout/run_forked', 0);
+\$adp->set_key('ClusterMeta', '/timeout/ipc_exec', 60);
+"
+
+for NODE in ${NODES[@]};
+do
+    ssh $NODE "supervisorctl start gsm-publisher"
+
+    if [ $? -ne 0 ]; then
+        log 'ERR' "Failed to start gsm-publisher: $NODE"
+        continue
+    fi
+done;
+
+log "INFO" "[CLUSTER] Migration is done"

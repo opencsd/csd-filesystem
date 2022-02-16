@@ -1,0 +1,140 @@
+%= javascript '/mojo/jquery/jquery.js'
+<div id="menubar">
+  <style scoped="scoped">
+    #menubar {
+      background-color: #1a1a1a;
+      background: -webkit-linear-gradient(top, #2a2a2a 0%, #000 100%);
+      background: -moz-linear-gradient(top, #2a2a2a 0%, #000 100%);
+      background: linear-gradient(top, #2a2a2a 0%, #000 100%);
+      box-shadow: 0px 1px 0px rgba(0, 0, 0, 0.5);
+      height: 46px;
+      overflow: hidden;
+      position: absolute;
+      text-align: right;
+      vertical-align: middle;
+      width: 100%;
+      z-index: 1000;
+    }
+    #menubar-content {
+      margin: 0 auto;
+      max-width: 1000px;
+    }
+    #menubar-logo {
+      float: left;
+      margin-left: 5em;
+      padding-top: 4px;
+    }
+    #menubar-links {
+      display:table-cell;
+      float: right;
+      height: 60px;
+      margin-right: 5em;
+      margin-top: 0.8em;
+    }
+    #menubar-links a {
+      color: #bbb;
+      font: 0.9em 'Helvetica Neue', Helvetica, sans-serif;
+      margin-left: 0.5em;
+      text-decoration: none;
+      transition: all 200ms ease-in-out;
+    }
+    #menubar-links a:hover { color: #fff }
+    #menubar-links input {
+      background-color: #3a3a3a;
+      border: 1px solid rgba(0, 0, 0, 0.1);
+      border-radius: 3px;
+      color: #eee;
+      display: inline;
+      margin-left: 1em;
+      padding: 4px;
+      transition: all 0.15s;
+    }
+    #menubar-links input:focus {
+      background-color: #fff;
+      color: #111;
+      outline: 0;
+    }
+    #menubar-links form { display: inline }
+    .animated { transition: all 0.25s ease }
+  </style>
+  <div id="menubar-content">
+    <div id="menubar-logo">
+      %= link_to 'http://www.gluesys.com/' => begin
+        %= image '/Gluesys_CI.png', alt => 'Gluesys CI'
+      % end
+    </div>
+    <div id="menubar-links">
+      %= link_to Documentation => 'http://mojolicio.us/perldoc'
+      %= link_to Wiki => 'https://github.com/kraih/mojo/wiki'
+      %= link_to GitHub => 'https://github.com/kraih/mojo'
+      %= link_to CPAN => 'https://metacpan.org/release/Mojolicious/'
+      %= link_to MailingList => 'https://groups.google.com/group/mojolicious'
+      %= link_to Blog => 'http://blog.kraih.com'
+      %= link_to Twitter => 'https://twitter.com/kraih'
+      %= form_for 'https://www.google.com/cse' => (target => '_blank') => begin
+        %= hidden_field cx => '014527573091551588235:pwfplkjpgbi'
+        %= hidden_field ie => 'UTF-8'
+        %= search_field 'q', placeholder => 'Search'
+      %= end
+    </div>
+  </div>
+</div>
+<script>
+  var menubar = $('#menubar');
+  var menubarHeight = menubar.outerHeight();
+  function fixOffset() {
+    var offset = $(window.location.hash).offset();
+    if (offset) {
+      $('html, body').animate({scrollTop: offset.top - menubarHeight}, 1);
+    }
+  }
+  $(window).load(function () {
+    if (window.location.hash) {
+      fixOffset();
+    }
+    var start = menubar.offset().top;
+    var fixed;
+    var lastScrollTop = start;
+    var hidden = menubarHeight + 1;
+    $(window).scroll(function () {
+      var st = $(window).scrollTop();
+      if (fixed) {
+        if (st <= start) {
+          fixed = false;
+          menubar.removeClass('animated');
+          menubar.css({'position': 'absolute', 'top': start + 'px'});
+        }
+        else if (Math.abs(lastScrollTop - st) > 100) {
+          if (!menubar.hasClass('animated')) {
+            menubar.addClass('animated');
+          }
+          if (st > lastScrollTop && st > (menubarHeight + start + 250)) {
+            menubar.css('transform', 'translateY(-' + hidden + 'px)');
+          }
+          else if (st < lastScrollTop) {
+            menubar.css('transform', 'translateY(0px)');
+          }
+          lastScrollTop = st;
+        }
+      }
+      else if (st > start) {
+        fixed = true;
+        menubar.css({'position': 'fixed', 'top': 0});
+      }
+    });
+  });
+  $(document).ready(function () {
+    $('a[href^="#"]').addClass('scroll');
+    $(".scroll").click(function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      var hash   = "#" + this.href.split("#")[1];
+      var target = $(hash);
+      var old    = target.attr('id');
+      target.attr('id', '');
+      location.hash = hash;
+      target.attr('id', old);
+      fixOffset();
+    });
+  });
+</script>

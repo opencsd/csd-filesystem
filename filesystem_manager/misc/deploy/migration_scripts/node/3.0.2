@@ -1,0 +1,50 @@
+#!/bin/sh
+
+[ -f /var/lib/gms/functions ] && . /var/lib/gms/functions
+
+log "INFO" "[NODE] Migration for 3.0.2"
+
+perl -I/usr/gms/libgms -e '
+use Common::IPC;
+
+my $dest_dir = "/opt/netdata/etc/netdata";
+my $src_dir  = "/usr/gms/misc/etc/netdata";
+
+my @files = (
+    "health_alarm_notify.conf",
+    "health.d/cpu.conf",
+    "health.d/ram.conf",
+    "health.d/net.conf",
+    "health.d/disks.conf",
+);
+
+
+for my $f ( @files )
+{
+    my $orig   = "$src_dir/$f";
+    my $target = "$dest_dir/$f";
+    my $result = Common::IPC::exec(cmd => "cp", args => [ "-af", $orig, $target ]);
+
+    if (!defined $result || $result->{status})
+    {
+        exit 1;
+    }
+}
+
+exit 0;
+'
+
+if [ $? = 0 ]; then
+    log "INFO" "[NODE] netdata configuration file copy succeeded."
+else
+    log "ERR" "[NODE] netdata configuration file copy failed: $?"
+fi
+
+systemctl restart netdata
+
+if [ $? = 0 ]; then
+    log "INFO" "[NODE] netdata restart."
+else
+    log "ERR" "[NODE] netdata restart fail: $?"
+fi
+

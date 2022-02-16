@@ -1,0 +1,18 @@
+post:
+  x-mojo-to: 'Cluster::Auth::LDAP#enable'
+  operationId: cluster_auth_ldap_enable
+  tags:
+    - auth
+    - cluster
+  requestBody:
+    required: true
+    description: request
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/LDAPConfig'
+  responses:
+    204:
+      description: This cluster has enabled
+    401:
+      $ref: '#/components/responses/Unauthorized'

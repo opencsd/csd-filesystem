@@ -1,0 +1,498 @@
+#!/usr/bin/env perl
+
+use v5.14;
+
+use strict;
+use warnings;
+use utf8;
+
+our $AUTHORITY = 'cpan:gluesys';
+our $GMSROOT;
+
+BEGIN
+{
+    use File::Basename qw/dirname/;
+    use File::Spec;
+    use File::Spec::Functions qw/rel2abs/;
+
+    ($GMSROOT = dirname(rel2abs(__FILE__))) =~ s/gms\/.+$/gms/;
+
+    unshift(@INC,
+        "$GMSROOT/xt/lib",
+        "$GMSROOT/lib",
+        "$GMSROOT/libgms",
+        "/usr/girasole/lib");
+}
+
+use Data::Dumper;
+use Env;
+use Try::Tiny;
+
+use GMS::Common::OptArgs;
+use Test::AnyStor::Util;
+
+# UTF encoding trick for Data::Dumper
+no warnings 'redefine';
+*Data::Dumper::qquote   = sub { qq["${\(shift)}"] };
+$Data::Dumper::Useperl  = 1;
+$Data::Dumper::Sortkeys = 1;
+use warnings 'redefine';
+
+#---------------------------------------------------------------------------
+#   Global Variables
+#---------------------------------------------------------------------------
+our %OPTS = (
+    CONFIG  => undef,
+    VM_CMD  => undef,
+    TIMEOUT => 300,
+    RETRY   => 2,
+);
+
+#---------------------------------------------------------------------------
+#   Functions
+#---------------------------------------------------------------------------
+sub getstate
+{
+    my $vm_path = shift;
+    my $args    = _get_init_conf('vm_info', $OPTS{CONFIG});
+
+    if (!defined($args))
+    {
+        printf STDERR "Failed to get target config: %s\n", $OPTS{CONFIG};
+        return;
+    }
+
+    my $found = 0;
+
+    foreach my $path (values(%{$args->{vm_nodes}}))
+    {
+        if ($path eq $vm_path)
+        {
+            $found = 1;
+            last;
+        }
+    }
+
+    if (!$found)
+    {
+        printf STDERR "Could not find a VM: %s\n", $vm_path;
+        return;
+    }
+
+    my $cmd = sprintf(
+        '%s -H %s -U %s -P %s %s getstate',
+        'vmware-cmd',
+        $args->{vm_host},
+        $args->{vm_user},
+        $args->{vm_pass},
+        $vm_path,
+    );
+
+    chomp(my $res = `$cmd`);
+
+    if ($? != 0)
+    {
+        printf STDERR "Failed to get the state of a VM: %s\n", $vm_path;
+        return;
+    }
+
+    # getstate() = STATE => STATE
+    $res =~ s/^.+=\s*//g;
+
+    return $res;
+}
+
+sub start
+{
+    my $args = _get_init_conf('vm_info', $OPTS{CONFIG});
+
+    if (!defined($args))
+    {
+        printf STDERR "Failed to get target config: %s\n", $OPTS{CONFIG};
+        return 1;
+    }
+
+    my $h_cmd
+        = "vmware-cmd -H $args->{vm_host} -U $args->{vm_user} -P $args->{vm_pass}";
+
+    my $vm_path = $args->{vm_nodes}->{$OPTS{VM_NODE}};
+
+    my $state = getstate($vm_path);
+
+    printf STDOUT "STATE: %s\n", $state;
+
+    if ($state eq 'on')
+    {
+        printf STDOUT "VM has already started: %s\n", $vm_path;
+        return 0;
+    }
+
+    printf STDOUT "Starting %s\n", $vm_path;
+
+    my $cmd = sprintf('%s %s', $h_cmd, $vm_path);
+    my $res = `$cmd start hard`;
+
+    if ($? != 0)
+    {
+        chomp($res);
+        printf STDERR "Failed to start VM: %s: %s\n", $vm_path, $res;
+        return 1;
+    }
+
+    sleep 30;
+
+    print "Done\n";
+
+    return 0;
+}
+
+sub stop
+{
+    my $args = _get_init_conf('vm_info', $OPTS{CONFIG});
+
+    if (!defined($args))
+    {
+        printf STDERR "Failed to get target config: %s\n", $OPTS{CONFIG};
+        return 1;
+    }
+
+    my $h_cmd
+        = "vmware-cmd -H $args->{vm_host} -U $args->{vm_user} -P $args->{vm_pass}";
+
+    foreach my $vm_path (values(%{$args->{vm_nodes}}))
+    {
+        my $state = getstate($vm_path);
+
+        printf STDOUT "STATE: %s\n", $state;
+
+        if ($state eq 'off')
+        {
+            printf STDOUT "VM has already stopped: %s\n", $vm_path;
+            next;
+        }
+
+        printf STDOUT "Stopping %s ...\n", $vm_path;
+
+        my $cmd = sprintf('%s %s', $h_cmd, $vm_path);
+
+        my $res = `$cmd stop hard`;
+
+        if ($? > 1)
+        {
+            chomp($res);
+            printf STDERR "Failed to stop VM: %d(state: %s)\n", $res, $state;
+            return 1;
+        }
+
+        print "Done\n";
+    }
+
+    return 0;
+}
+
+sub snapshot
+{
+    my %args = @_;
+
+    my $config = _get_init_conf('vm_info', $OPTS{CONFIG});
+
+    if (!defined($config))
+    {
+        printf STDERR "Failed to get target config: %s\n", $OPTS{CONFIG};
+        return 1;
+    }
+
+    my $exec = '/usr/lib/vmware-vcli/apps/vm/snapshotmanager.pl';
+
+    my $h_cmd = sprintf(
+        '%s --server %s --username %s --password %s',
+        $exec,
+        $config->{vm_host},
+        $config->{vm_user},
+        $config->{vm_pass}
+    );
+
+    my $pid;
+    my $res;
+
+    my $start_time = get_time();
+
+    foreach my $vm_ip (sort(keys(%{$config->{vm_nodes}})))
+    {
+        if (defined($OPTS{VM_NODE}))
+        {
+            next if ($OPTS{VM_NODE} ne $vm_ip);
+        }
+
+        my $vm_path = $config->{vm_nodes}{$vm_ip};
+        my $vmname  = substr(
+            $vm_path,
+            rindex($vm_path, '/') + 1,
+            rindex($vm_path, '.vmx') - (rindex($vm_path, '/') + 1)
+        );
+
+        my $retry_cnt = 0;
+
+    RETRY:
+        if ($retry_cnt >= $OPTS{RETRY})
+        {
+            printf STDERR "Failed to control VM: %s\n", $vmname;
+            return 1;
+        }
+
+        my $cmd;
+
+        given ($args{op})
+        {
+            when ('revert')
+            {
+                printf STDOUT "Reverting %s ...\n", $vmname;
+
+                $cmd = sprintf(
+                    '%s --operation "%s" --vmname "%s"',
+                    $h_cmd,
+                    $args{op},
+                    $vmname
+                );
+            }
+            when ('goto')
+            {
+                printf STDOUT "%s is going to snapshot %s ...\n",
+                    $vmname, $args{snapshot};
+
+                $cmd
+                    = sprintf(
+                    '%s --operation "%s" --vmname "%s" --snapshotname "%s"',
+                    $h_cmd, $args{op}, $vmname, $args{snapshot});
+            }
+            when ('create')
+            {
+                printf STDOUT "Creating snapshot %s in %s ...\n",
+                    $args{snapshot}, $vmname;
+
+                $cmd
+                    = sprintf(
+                    '%s --operation "%s" --vmname "%s" --snapshotname "%s"',
+                    $h_cmd, $args{op}, $vmname, $args{snapshot});
+            }
+            when ('remove')
+            {
+                printf STDOUT "Removing snapshot %s in %s ...\n",
+                    $args{snapshot}, $vmname;
+
+                $cmd
+                    = sprintf(
+                    '%s --operation "%s" --vmname "%s" --snapshotname "%s"',
+                    $h_cmd, $args{op}, $vmname, $args{snapshot});
+            }
+        }
+
+        eval {
+            local $SIG{ALRM} = sub { die 'Time out' };
+            alarm $OPTS{TIMEOUT};
+
+            my $fh;
+
+            $pid = open($fh, '-|', "$cmd 2>&1");
+
+            while (<$fh>)
+            {
+                printf STDOUT '%s', $_;
+
+                if ($_ =~ m/Not Found/)
+                {
+                    die 'Not found';
+                }
+            }
+
+            close($fh);
+
+            $res = $? >> 8;
+
+            return 1;
+        } or do
+        {
+            # Timeout check & Retry
+            chomp($@);
+
+            if (uc($@) eq 'NOT FOUND')
+            {
+                printf STDOUT "Snapshot %s does not exist\n",
+                    $args{snapshot}, $@;
+                return -1;
+            }
+            else
+            {
+                printf STDOUT "%s ... Retry (%d)\n", $@, $retry_cnt++;
+
+                system("kill -9 $pid");
+
+                sleep 3;
+
+                goto RETRY;
+            }
+        };
+
+        alarm 0;
+
+        # Result_checking
+        if (!defined($res) || $res)
+        {
+            printf STDOUT "Exit status error... Retry (%d): %s\n",
+                $retry_cnt++, $res // 'unknown status';
+
+            # vmware-cmd SOAP error 예외...
+            if ($res == 4)
+            {
+                $retry_cnt--;
+                printf STDERR "SOAP error found.. Retry one more\n";
+            }
+
+            goto RETRY;
+        }
+
+        printf "Result (%s) ... OK\n", $res;
+    }
+
+    print "=========================================================\n";
+    print "VM revert Result\n";
+    print "Start time : $start_time\n";
+    print "End time   : ${\get_time()}\n";
+    print "=========================================================\n";
+
+    return 0;
+}
+
+#---------------------------------------------------------------------------
+#   Main
+#---------------------------------------------------------------------------
+select((select(STDOUT), $| = 1)[0]);
+select((select(STDERR), $| = 1)[0]);
+
+my $parser = GMS::Common::OptArgs->new(
+    options => [
+        {
+            pinned   => 1,
+            long     => 'config',
+            desc     => 'configuration file for test environment',
+            valdesc  => '[FILE]',
+            callback => sub { $OPTS{CONFIG} = shift; },
+        },
+        {
+            pinned   => 1,
+            long     => 'cmd',
+            desc     => 'command to perform',
+            valdesc  => '[CMD]',
+            callback => sub { $OPTS{VM_CMD} = shift; },
+        },
+        {
+            pinned   => 1,
+            long     => 'node',
+            desc     => 'target node ip to perform',
+            valdesc  => '[NODE]',
+            callback => sub { $OPTS{VM_NODE} = shift; },
+        },
+        {
+            pinned   => 1,
+            long     => 'timeout',
+            desc     => 'timeout for execution',
+            valdesc  => '[SECONDS]',
+            callback => sub { $OPTS{TIMEOUT} = shift; },
+        },
+        {
+            pinned   => 1,
+            long     => 'retry',
+            desc     => 'retry count when it failed',
+            valdesc  => '',
+            callback => sub { $OPTS{RETRY} = shift; },
+        },
+        {
+            pinned   => 1,
+            long     => 'snapshot',
+            desc     => 'snapshot name to be used in operation',
+            valdesc  => '[NAME]',
+            callback => sub { $OPTS{SNAPSHOT} = shift; },
+        }
+    ],
+    use_cmd   => 0,
+    help_sopt => 1,
+    help_lopt => 1,
+);
+
+$parser->parse(args => \@ARGV);
+
+if (!defined($OPTS{CONFIG}) || !defined($OPTS{VM_CMD}))
+{
+    $parser->print_help();
+    exit 1;
+}
+
+my $RETVAL = 0;
+
+given ($OPTS{VM_CMD})
+{
+    when ('stop')
+    {
+        $RETVAL = stop();
+    }
+    when ('start')
+    {
+        $RETVAL = start();
+    }
+    when ('revert-snapshot')
+    {
+        $RETVAL = snapshot(op => 'revert');
+    }
+    when ('goto-snapshot')
+    {
+        if (!defined($OPTS{SNAPSHOT}) || !length($OPTS{SNAPSHOT}))
+        {
+            printf STDERR "Snapshot name not specified!\n";
+            exit 255;
+        }
+
+        printf STDOUT "SNAPSHOT: %s\n", $OPTS{SNAPSHOT};
+
+        $RETVAL = snapshot(
+            op       => 'goto',
+            snapshot => $OPTS{SNAPSHOT},
+        );
+    }
+    when ('create-snapshot')
+    {
+        if (!defined($OPTS{SNAPSHOT}) || !length($OPTS{SNAPSHOT}))
+        {
+            printf STDERR "Snapshot name not specified!\n";
+            exit 255;
+        }
+
+        printf STDOUT "SNAPSHOT: %s\n", $OPTS{SNAPSHOT};
+
+        $RETVAL = snapshot(
+            op       => 'create',
+            snapshot => $OPTS{SNAPSHOT},
+        );
+    }
+    when ('remove-snapshot')
+    {
+        if (!defined($OPTS{SNAPSHOT}) || !length($OPTS{SNAPSHOT}))
+        {
+            printf STDERR "Snapshot name not specified!\n";
+            exit 255;
+        }
+
+        printf STDOUT "SNAPSHOT: %s\n", $OPTS{SNAPSHOT};
+
+        $RETVAL = snapshot(
+            op       => 'remove',
+            snapshot => $OPTS{SNAPSHOT},
+        );
+    }
+    default
+    {
+        printf STDERR "Not supported command: $OPTS{VM_CMD}\n";
+        exit 1;
+    }
+}
+
+exit $RETVAL;

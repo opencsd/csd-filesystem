@@ -1,0 +1,9 @@
+description: present a volume usage
+type: object
+properties:
+  key:
+    type: string
+  Free:
+    type: number
+  Using:
+    type: number

@@ -1,0 +1,13 @@
+#!/bin/sh
+
+[ -f /var/lib/gms/functions ] && . /var/lib/gms/functions
+
+log "INFO" "[CLUSTER] migration for 2.0.5.3"
+
+log "INFO" "[CLUSTER] Change RAID monitoring interval to 15s"
+acetcdctl set -d Publisher -k '/RAID/interval' -v 15
+
+log "INFO" "[CLUSTER] Change RAID monitoring timeout to 120s"
+acetcdctl set -d Publisher -k '/RAID/timeout' -v 120
+
+log "INFO" "[CLUSTER] Migration is done"

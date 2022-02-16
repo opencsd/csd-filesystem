@@ -1,0 +1,13 @@
+post:
+  x-mojo-to: 'Login#sign_out'
+  operationId: sign_out
+  responses:
+    200:
+      description: Response to indicate user has signed out
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/DefaultResponse'
+    401:
+      $ref: '#/components/responses/Unauthorized'

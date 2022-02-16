@@ -1,0 +1,79 @@
+#!/bin/sh
+
+function print_help()
+{
+    echo
+    echo -n "USAGE: $0 --ip [IP] --cmd [FTP_CMD] --fullcmd [FTP_FULLCMD]"
+    echo " --user [FTP_USER]"
+    echo
+    echo "OPTIONS"
+    echo "    --ip      [IP]           	FTP client IP address."
+    echo "    --cmd     [FTP_CMD]      	FTP command"
+    echo "    --fullcmd	[FTP_FULLCMD]	FTP full command."
+    echo "    --user    [USER]         	FTP username."
+    echo "    -h, --help               	Show this help message."
+    echo
+    echo "Copyright 2015-2021. Gluesys Co., Ltd. All rights reserved."
+    echo ""
+}
+
+while getopts ":h-:" opt; do
+    case $opt in
+        -)
+            case "${OPTARG}" in
+                ip)
+                    IP=${!OPTIND}
+                    OPTIND=$(( $OPTIND + 1 ))
+                    ;;
+                ip=*)
+                    IP=${OPTARG#*=}
+                    ;;
+                cmd)
+                    CMD=${!OPTIND}
+                    OPTIND=$(( $OPTIND + 1 ))
+                    ;;
+                cmd=*)
+                    CMD=${OPTARG#*=}
+                    ;;
+                fullcmd)
+                    FULLCMD=${!OPTIND}
+                    OPTIND=$(( $OPTIND + 1 ))
+                    ;;
+                fullcmd=*)
+                    FULLCMD=${OPTARG#*=}
+                    ;;
+                user)
+                    FTP_USER=${!OPTIND}
+                    OPTIND=$(( $OPTIND + 1 ))
+                    ;;
+                user=*)
+                    FTP_USER=${OPTARG#*=}
+                    ;;
+                help)
+                    print_help
+                    exit 0
+                    ;;
+                *)
+                    echo "Invalid option: --$OPTARG"
+                    ;;
+            esac
+            ;;
+        h)
+            print_help
+            exit 0
+            ;;
+        ?)
+            echo "Invalid option: -$OPTARG"
+            exit 1
+            ;;
+        :)
+            echo "Option -$OPTARG requires an argument."
+            exit 1
+            ;;
+    esac
+done;
+
+/usr/bin/eflowdctl event create \
+    --level="info" --from="${HOSTNAME%%.*}" --code="FTP_LOGIN" \
+    --msg="User \"${FTP_USER%%/*}\" has logged in via FTP" \
+    --details=IP="$IP" --details=User="${FTP_USER%%/*}"

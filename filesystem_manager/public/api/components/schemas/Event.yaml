@@ -1,0 +1,47 @@
+description: present an event
+type: object
+properties:
+  Beep_count:
+    type: integer
+  Beep_latest:
+    type: integer
+  Category:
+    type: string
+  Code:
+    type: string
+  Details:
+    anyOf:
+      - nullable: true
+      - type: string
+      - type: object
+  Id:
+    type: integer
+  Level:
+    type: string
+  Message:
+    type: string
+  Quiet:
+    type: integer
+  Resolved:
+    type: integer
+  Rsyslog_count:
+    type: integer
+  Rsyslog_latest:
+    type: integer
+  Scope:
+    type: string
+  Smtp_count:
+    type: integer
+  Smtp_latest:
+    type: integer
+  Snmptrap_count:
+    type: integer
+  Snmptrap_latest:
+    type: integer
+  Task_id:
+    nullable: true
+    type: integer
+  Time:
+    type: string
+  Type:
+    type: string

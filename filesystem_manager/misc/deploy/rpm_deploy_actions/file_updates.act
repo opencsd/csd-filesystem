@@ -1,0 +1,19 @@
+# file_updates.act
+# limmits
+## tab -> ' '
+## ignore '^ '
+
+#add:::target_file:::add_phrase
+add:::/etc/profile:::if [ -r /etc/default/gluesys ]; then . /etc/default/gluesys; fi
+add:::/etc/systemd/journald.conf:::RateLimitInterval=0
+add:::/etc/systemd/journald.conf:::RateLimitBurst=0
+add:::/etc/systemd/journald.conf:::Storage=auto
+add:::/etc/systemd/journald.conf:::SystemMaxFileSize=256M
+add:::/etc/systemd/journald.conf:::MaxRetentionSec=1week
+
+#del:::target_file:::rm_phrase
+
+#mod:::target_file:::old_phrase:::new_phrase
+mod:::/etc/rsyslog.conf:::^$SystemLogRateLimitInterval:::$SystemLogRateLimitInterval 0
+mod:::/etc/rsyslog.conf:::^$SystemLogRateLimitBurst:::$SystemLogRateLimitBurst 0
+mod:::/etc/rsyslog.conf:::^$MaxMessageSize:::$MaxMessageSize 0

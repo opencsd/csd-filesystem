@@ -1,0 +1,1712 @@
+#!/usr/bin/env perl
+
+use v5.14;
+
+use strict;
+use warnings;
+use utf8;
+
+our $AUTHORITY = 'cpan:gluesys';
+
+our $GMSROOT;
+
+BEGIN
+{
+    use Cwd qw/abs_path/;
+
+    ($GMSROOT = abs_path($0)) =~ s/\/xt\/[^\/]*$//;
+
+    unshift(@INC,
+        "$GMSROOT/xt/lib",
+        "$GMSROOT/libgms",
+        "$GMSROOT/lib",
+        "/usr/girasole/lib");
+}
+
+use Data::Dumper;
+use Env;
+use File::Find;
+use GMS::Common::OptArgs;
+use IO::Pipe;
+use JSON;
+use List::MoreUtils qw/uniq/;
+use Mojo::UserAgent;
+use POSIX qw/strftime :sys_wait_h/;
+use Try::Tiny;
+use Term::ANSIColor;
+use TAP::Parser;
+use TAP::Parser::Aggregator qw/all/;
+use Test::AnyStor::Base;
+use Test::AnyStor::Stage;
+use Test::AnyStor::Util;
+
+# UTF encoding trick for Data::Dumper
+no warnings 'redefine';
+*Data::Dumper::qquote   = sub { qq["${\(shift)}"] };
+$Data::Dumper::Useperl  = 1;
+$Data::Dumper::Sortkeys = 1;
+use warnings 'redefine';
+
+#---------------------------------------------------------------------------
+#   Global Variables
+#---------------------------------------------------------------------------
+our $GMSPORT = 80;
+
+our %OPTS = (
+    GMSSRC  => undef,
+    GSMSRC  => undef,
+    NODES   => undef,
+    CONFIG  => undef,
+    WITH_PP => 0,
+    SUMMARY => 0,
+    GITLAB  => {
+        URL     => 'https://gitlab.gluesys.com',
+        TOKEN   => 'JzGRBbyEXa7tN-1zam6N',
+        PROJECT => 'ac2/GMS',
+    },
+    PKG_REPO => '/usr/gms/misc/etc/yum.repos.d/anystor-e.repo',
+    NTP_SVRS => [
+        'time.kriss.re.kr',
+        'time.bora.net',
+        'time.nist.gov',
+        'time.windows.com',
+        'time.ewha.or.kr',
+    ],
+    IGNORE_TEST_FILTER => ['function/volume/glusterfs_tier_api.t',],
+    PACKAGES           => [],
+);
+
+#---------------------------------------------------------------------------
+#   Signal Handlers
+#---------------------------------------------------------------------------
+local $SIG{__WARN__} = sub
+{
+    my $msg = shift;
+
+    my $fh;
+
+    if ($msg =~ m/^\[ERR\]/)
+    {
+        $fh = *STDERR;
+        paint_err();
+    }
+    elsif ($msg =~ m/^\[WARN\]/)
+    {
+        $fh = *STDERR;
+        paint_warn_l();
+    }
+    elsif ($msg =~ m/^\[INFO\]/)
+    {
+        $fh = *STDOUT;
+        paint_info();
+    }
+    else
+    {
+        $fh = *STDOUT;
+    }
+
+    printf $fh "%s: %s\n", get_time(), $msg;
+
+    paint_reset();
+};
+
+#---------------------------------------------------------------------------
+#   Main
+#---------------------------------------------------------------------------
+
+# REST API Junit Report by hgichon 2018/02/22
+# 본 테스트에서 Base.pm::call_rest_api() 로 호출되는 모든 API의 소요시간과 리스팅 및 결과 기록됨
+# t/lib/Test/Anycloud/Base.pm
+
+my $junit_report = '/usr/gms/result.xml';
+
+system("rm -f $junit_report");
+
+my $parser = GMS::Common::OptArgs->new(
+    commands => [
+        {
+            path     => 'install',
+            desc     => 'run install testsuite',
+            callback => sub { exit run_test('install'); },
+        },
+        {
+            path     => 'merge',
+            desc     => 'run merge testsuite',
+            callback => sub { exit run_test('merge'); },
+        },
+        {
+            path     => 'daily',
+            desc     => 'run daily testsuite',
+            callback => sub { exit run_test('daily'); },
+        },
+        {
+            path     => 'stress',
+            desc     => 'run stress testsuite',
+            callback => sub { exit run_test('stress'); },
+        },
+        {
+            path     => 'release',
+            desc     => 'run release testsuite',
+            callback => sub { exit run_test('release'); },
+        },
+        {
+            path     => 'node_archive',
+            desc     => 'archive test',
+            callback => sub { node_archive(); },
+        },
+    ],
+    options => [
+        {
+            pinned   => 1,
+            long     => 'gms-src',
+            desc     => 'it specifies which directory will be used for GMS.',
+            valdesc  => '[DIR]',
+            callback => sub { $OPTS{GMSSRC} = shift; },
+        },
+        {
+            pinned   => 1,
+            long     => 'gsm-src',
+            desc     => 'it specifies which directory will be used for GSM.',
+            valdesc  => '[DIR]',
+            callback => sub { $OPTS{GSMSRC} = shift; },
+        },
+        {
+            pinned => 1,
+            long   => 'nodes',
+            desc   =>
+                'it specifies which node ip addresses constitute the cluster.',
+            valdesc  => '[NODES]',
+            callback => sub { $OPTS{NODES} = shift; },
+        },
+        {
+            pinned   => 1,
+            long     => 'config',
+            desc     => 'it specifies the install template file.',
+            valdesc  => '[FILE]',
+            callback => sub
+            {
+                $OPTS{CONFIG}          = shift;
+                $ENV{GMS_BUILD_CONFIG} = $OPTS{CONFIG};
+            },
+        },
+        {
+            pinned   => 1,
+            long     => 'pkg-repo',
+            desc     => 'it specifies the package repository file.',
+            valdesc  => '[FILE]',
+            callback => sub
+            {
+                my $repo = shift;
+
+                return if (!(defined($repo) && length($repo)));
+
+                $OPTS{PKG_REPO} = $repo;
+            },
+        },
+        {
+            pinned   => 1,
+            long     => 'ntp-servers',
+            desc     => 'it specifies NTP servers.',
+            valdesc  => '[SERVER-1 ... SERVER-N]',
+            callback => sub
+            {
+                my $ntp = shift;
+
+                push(
+                    @{$OPTS{NTP_SVRS}},
+                    ref($ntp) eq 'ARRAY' ? @{$ntp} : $ntp
+                );
+            },
+        },
+        {
+            pinned   => 1,
+            long     => 'with-pp',
+            desc     => 'packaging with pp for converting to executable.',
+            callback => sub { $OPTS{WITH_PP} = 1; },
+        },
+        {
+            pinned   => 1,
+            long     => 'gitlab',
+            desc     => 'GitLab domain name or IP address.',
+            valdesc  => '[NAME/IP]',
+            callback => sub { $OPTS{GITLAB}->{URL} = shift; },
+        },
+        {
+            pinned   => 1,
+            long     => 'token',
+            desc     => 'GitLab personal access token',
+            valdesc  => '[TOKEN]',
+            callback => sub { $OPTS{GITLAB}->{TOKEN} = shift; },
+        },
+        {
+            pinned   => 1,
+            long     => 'project',
+            desc     => 'GitLab project name.',
+            valdesc  => '[PROJECT]',
+            callback => sub { $OPTS{GITLAB}->{PROJECT} = shift; },
+        },
+        {
+            pinned   => 1,
+            short    => 's',
+            long     => 'summary',
+            desc     => 'only show summarized test result.',
+            callback => sub { $OPTS{SUMMARY} = 1; },
+        },
+        {
+            pinned   => 1,
+            long     => 'installer',
+            desc     => 'AnyStor installer path',
+            valdesc  => '[FILE]',
+            callback => sub { $OPTS{INSTALLER} = shift; },
+        },
+        {
+            pinned   => 1,
+            long     => 'packages',
+            desc     => 'Packages to be pre-installed',
+            valdesc  => '[FILES]',
+            callback => sub
+            {
+                $OPTS{PACKAGES} = shift;
+                $OPTS{PACKAGES} = [$OPTS{PACKAGES}]
+                    if (ref($OPTS{PACKAGES}) ne 'ARRAY');
+
+                for (my $i = 0; $i < @{$OPTS{PACKAGES}}; $i++)
+                {
+                    my $pkg = $OPTS{PACKAGES}->[$i];
+
+                    if ($pkg =~ m/\*/)
+                    {
+                        splice(
+                            @{$OPTS{PACKAGES}},
+                            $i ? $i-- : $i,
+                            1, glob("$pkg")
+                        );
+                    }
+                }
+            },
+        },
+        {
+            pinned   => 1,
+            long     => 'jobname',
+            desc     => 'Job name on jenkins',
+            valdesc  => '[JOBNAME]',
+            callback => sub { $OPTS{JOB_NAME} = shift; },
+        },
+        {
+            pinned   => 1,
+            long     => 'buildnum',
+            desc     => 'Build number on jenkins',
+            valdesc  => '[BUILDNUM]',
+            callback => sub { $OPTS{BUILD_NUMBER} = shift; },
+        },
+        {
+            pinned   => 1,
+            long     => 'bail-on-fail',
+            desc     => 'terminates the test on failure',
+            callback => sub { $ENV{BAIL_ON_FAIL} = 1; },
+        },
+        {
+            pinned   => 1,
+            long     => 'gogo-on-fail',
+            desc     => 'keep going the test even on failure',
+            callback => sub { $ENV{GOGO_ON_FAIL} = 0; },
+        },
+        {
+            pinned   => 1,
+            long     => 'use-rpm',
+            desc     => 'using rpm installer',
+            callback => sub { $ENV{RPM_INSTALL} = 1; },
+        },
+        {
+            pinned   => 1,
+            long     => 'test-module',
+            desc     => 'function test with sub-module ',
+            valdesc  => '[DIR]',
+            callback => sub { $ENV{FUNC_SUB_MOD} = shift; },
+        },
+        {
+            pinned => 1,
+            long   => 'rollback',
+            desc => 'it specifies which test will be used for rollback test.',
+            valdesc  => '[init, join, config]',
+            callback => sub { $OPTS{RB_TEST} = shift; },
+        },
+        {
+            pinned   => 1,
+            long     => 'two-nic',
+            desc     => 'share mgmt and service interface',
+            callback => sub { $ENV{TWO_NIC} = 1; },
+        },
+        {
+            pinned   => 1,
+            long     => 'skip-install',
+            desc     => 'skip AnyStor-E installation',
+            callback => sub { $ENV{SKIP_INSTALL} = 1; },
+        },
+        {
+            pinned   => 1,
+            long     => 'skip-config',
+            desc     => 'skip AnyStor-E configuration',
+            callback => sub { $ENV{SKIP_CONFIG} = 1; },
+        },
+        {
+            pinned   => 1,
+            long     => 'skip-init',
+            desc     => 'skip AnyStor-E initialization',
+            callback => sub { $ENV{SKIP_INIT} = 1; },
+        },
+        {
+            pinned   => 1,
+            long     => 'skip-merge-test',
+            desc     => 'skip test for install/setup only',
+            callback => sub { $ENV{SKIP_MERGE_TEST} = 1; },
+        },
+        {
+            pinned   => 1,
+            long     => 'limit-test-nodes',
+            desc     => 'limit test nodes',
+            valdesc  => '[NUMOFNODES]',
+            callback => sub { $ENV{TEST_NODES} = shift; },
+        },
+    ],
+    help_cmd     => 1,
+    help_lopt    => 1,
+    help_sopt    => 1,
+    rate_desc    => 0.35,
+    rate_valdesc => 0.25,
+);
+
+$parser->parse(args => \@ARGV);
+
+exit 0;
+
+#---------------------------------------------------------------------------
+#   Functions
+#---------------------------------------------------------------------------
+sub deploy_to
+{
+    my $target = shift;
+
+    my $config    = $OPTS{CONFIG};
+    my $lines     = do { local @ARGV = ($config); local $/; <>; };
+    my $config_db = JSON::decode_json($lines);
+
+    $config_db->{network}->{storage}->{ipaddr}
+        = $config_db->{vm_info}->{vm_stg_ip}->{$target};
+    $config_db->{network}->{storage}->{netmask}
+        = $config_db->{vm_info}->{vm_stg_ip}->{stg_netmask};
+
+    my $mgmt_iface
+        = eval { return $config_db->{network}->{management}->{interface}; };
+
+    if (!defined($mgmt_iface))
+    {
+        #FIXME: code for lagacy base conf.
+        #       remove this after change all of jenkins base conf.
+        $mgmt_iface = delete($config_db->{network}->{management});
+        $config_db->{network}->{management}->{interface} = $mgmt_iface;
+    }
+
+    if (defined($ENV{TWO_NIC}))
+    {
+        $mgmt_iface = 'service';
+    }
+
+    if (lc($mgmt_iface) eq 'service')
+    {
+        $config_db->{network}->{management}->{interface} = $mgmt_iface;
+        $config_db->{network}->{management}->{ipaddr}    = $target;
+
+        if (!defined($config_db->{network}->{management}->{netmask}))
+        {
+            $config_db->{network}->{management}->{netmask} = '255.255.252.0';
+        }
+    }
+
+    my $fh;
+
+    if (!open($fh, '>', $config))
+    {
+        warn "[ERR] Failed to open: $config: $!";
+        return -1;
+    }
+
+    print $fh JSON->new->pretty->encode($config_db);
+
+    close($fh);
+
+    my $cmd = "scp $config ";
+
+    $config =~ s/^.*\///;
+    $cmd .= "root\@$target:$config";
+
+    if (call_system($cmd) < 0)
+    {
+        warn sprintf("[ERR] Failed to copy config file: %s", $target);
+        return -1;
+    }
+
+    if (defined($ENV{RPM_INSTALL}))
+    {
+        my $repodir = '/etc/yum.repos.d';
+
+        $cmd = <<"END_CMD";
+ssh root\@$target "rm -f $repodir/*.repo";
+scp $OPTS{PKG_REPO} root\@$target:$repodir;
+END_CMD
+
+        $cmd .= 'scp ';
+
+        if (@{$OPTS{PACKAGES}})
+        {
+            $cmd .= join(' ', @{$OPTS{PACKAGES}});
+        }
+
+        $cmd .= " $OPTS{INSTALLER} root\@$target:./;";
+    }
+    else
+    {
+        $cmd = "scp $OPTS{INSTALLER} root\@$target:./";
+    }
+
+    warn "[INFO] Command: $cmd";
+
+    if (call_system($cmd) < 0)
+    {
+        warn sprintf("[ERR] Failed to copy installer: %s", $target);
+        return -1;
+    }
+
+    my $ntp_success = 0;
+
+    foreach my $ntp_server (@{$OPTS{NTP_SVRS}})
+    {
+        if (!call_system("ssh root\@$target 'ntpdate -u $ntp_server'"))
+        {
+            warn "[INFO] System clock synchronized with $ntp_server";
+            $ntp_success++;
+            last;
+        }
+    }
+
+    if (!$ntp_success)
+    {
+        warn sprintf('[ERR] Failed to sync date: %s(%s)',
+            $target, join(' ', @{$OPTS{NTP_SVRS}}));
+
+        return -1;
+    }
+
+    return 0;
+}
+
+sub install_to
+{
+    my $target = shift;
+
+    (my $config = $OPTS{CONFIG}) =~ s/^.*\///;
+
+    my $installer = File::Basename::basename($OPTS{INSTALLER});
+    my $cmd       = '';
+
+    if (defined($ENV{RPM_INSTALL}))
+    {
+        my @pkgs = (
+            map { File::Basename::basename($_); } @{$OPTS{PACKAGES}},
+            $installer,
+        );
+
+        my @cmds = (
+            'yum install -y yum-utils',
+            'yum-config-manager --enable anystor-e anystor-e-testing',
+            'yum clean all',
+            'yum erase -y glusterfs-* samba-* nfs-ganesha* mariadb*',
+            'yum erase -y libev perl-EV perl-Mojolicious',
+            'yum update -y perl',
+            'userdel -rf admin',
+            'getent passwd admin',
+            'groupdel -f admin',
+            'getent group admin',
+            sprintf('yum localinstall -y %s',
+                join(' ', map { "./$_"; } @pkgs)),
+            'getent passwd admin',
+            'getent group admin',
+        );
+
+        foreach my $cmd (@cmds)
+        {
+            my $out = `ssh root\@$target $cmd`;
+
+            if ($cmd !~ m/^(?:userdel|groupdel|getent)/ && $? != 0)
+            {
+                warn "[ERR] Failed to execute: $target: $cmd: $out";
+                return -1;
+            }
+
+            warn "[INFO] SSH Command: $cmd";
+        }
+    }
+
+    # For GMS debugging
+    $cmd = "ssh root\@$target ";
+    $cmd .= "\"sed -i -e 's/production/development/g;' /etc/sysconfig/gms\"";
+
+    if (call_system($cmd) < 0)
+    {
+        p_e_printf("Failed to set GMS logging level: %s\n", $target);
+    }
+
+    $cmd = "ssh root\@$target \"systemctl restart gms\"";
+
+    if (call_system($cmd) < 0)
+    {
+        p_e_printf("Failed to restart GMS: %s\n", $target);
+    }
+
+    # For glusterd debugging
+    $cmd = "ssh root\@$target \"sh -c '";
+    $cmd .= "echo GLUSTERD_LOGLEVEL=TRACE >> /etc/sysconfig/glusterd'\"";
+
+    if (call_system($cmd) < 0)
+    {
+        p_e_printf("Failed to set glusterd logging level: %s\n", $target);
+    }
+
+    # For glusterfsd debugging
+    $cmd = "ssh root\@$target \"sh -c '";
+    $cmd .= "echo GLUSTERFSD_LOGLEVEL=TRACE >> /etc/sysconfig/glusterfsd'\"";
+
+    if (call_system($cmd) < 0)
+    {
+        p_e_printf("Failed to set glusterfsd logging level: %s\n", $target);
+    }
+
+    # For samba debugging
+    $cmd = "ssh root\@$target \"sh -c '";
+    $cmd .= "sed -i -e \\\"";
+    $cmd
+        .= "s/^SAMBAOPTIONS=.*/SAMBAOPTIONS=\\\\\\\"--debuglevel=10\\\\\\\"/g;";
+    $cmd
+        .= " s/^SMBDOPTIONS=.*/SMBDOPTIONS=\\\\\\\"--debuglevel=10\\\\\\\"/g;";
+    $cmd
+        .= " s/^NMBDOPTIONS=.*/NMBDOPTIONS=\\\\\\\"--debuglevel=10\\\\\\\"/g;";
+    $cmd
+        .= " s/^WINBINDOPTIONS=.*/WINBINDOPTIONS=\\\\\\\"--debuglevel=10\\\\\\\"/g;";
+    $cmd .= "\\\" /etc/sysconfig/samba'\"";
+
+    if (call_system($cmd) < 0)
+    {
+        p_e_printf("Failed to set samba logging level: %s\n", $target);
+    }
+
+    $cmd = "ssh root\@$target \"sh -c '";
+    $cmd .= "sed -i -e \\\"";
+    $cmd .= "s/^OpenGPGCheck.*/OpenGPGCheck = no/g;";
+    $cmd .= " s/^ProcessUnpackaged.*/ProcessUnpackaged = yes/g;";
+    $cmd .= "\\\" /etc/abrt/abrt-action-save-package-data.conf'\"";
+
+    if (call_system($cmd) < 0)
+    {
+        p_e_printf("Failed to update abrt config: %s\n", $target);
+    }
+
+    if (call_system("ssh root\@$target \"systemctl restart abrtd\"") < 0)
+    {
+        p_e_printf("Failed to restart abrt daemon: %s\n", $target);
+    }
+
+    return 0;
+}
+
+sub config_node
+{
+    my $target = shift;
+
+    (my $config = $OPTS{CONFIG}) =~ s/^.*\///;
+
+    my $cmd = <<"END_CMD";
+    ssh root\@$target "sed -i -e '0,/\\"mode\\"/{s/\\"mode\\" : 0/\\"mode\\" : 1/};' $config"
+END_CMD
+
+    my $res = call_system($cmd);
+
+    if ($res < 0)
+    {
+        p_e_printf('Failed to update bonding mode to 1(active/standby)');
+        return -1;
+    }
+
+    $cmd = <<"END_CMD";
+    ssh root\@$target \\
+        "bash -c \\". /etc/default/gluesys; \\
+                    /usr/gms/bin/acinitctl config -c $config \\""
+END_CMD
+
+    # Stage test
+    my $pid   = 0;
+    my $pipe  = IO::Pipe->new();
+    my $check = undef;
+
+    $target = sprintf('%s:%d', $target, $GMSPORT);
+
+    if (!defined($pid = fork()))
+    {
+        warn "[ERR] Failed to fork: $!";
+        return -1;
+    }
+
+    if ($pid == 0)
+    {
+        sleep(5);
+
+        warn '[INFO] Starting to test for staging: Node Configuration';
+
+        my $stage_t
+            = Test::AnyStor::Stage->new(addr => $target, no_logout => 1);
+
+        # wait 10 mins(60 * 10)
+        #   - ok     => 0
+        #   - not ok => -1
+        $check
+            = $stage_t->cluster_stage_test('Config', 60, 'before-init', 10);
+
+        # get writer pipe and then writes a line to that
+        $pipe->writer;
+        print $pipe $check;
+        $pipe->close;
+
+        exit(0);
+    }
+
+    # Perform cluster preparation in parent process
+    sleep(10);
+
+    $res = call_system($cmd);
+
+    if ($res < 0)
+    {
+        waitpid($pid, 0);
+        return $res;
+    }
+
+    # get reader pipe and then blocked until read a line from that
+    $pipe->reader;
+    $check = $pipe->getline;
+    $pipe->close;
+
+    waitpid($pid, 0);
+
+    warn '[INFO] Staging test has finished';
+
+    if (!defined($check) || $check)
+    {
+        warn '[ERR] Failed to pass for staging test';
+        return -1;
+    }
+
+    return 0;
+}
+
+sub init_cluster
+{
+    # Node IP
+    my $target = shift;
+
+    (my $config = $OPTS{CONFIG}) =~ s/^.*\///;
+
+    my $cmd = <<"END_CMD";
+    ssh root\@$target \\
+        "bash -c \\". /etc/default/gluesys; \\
+                    /usr/gms/bin/acinitctl create -c $config\\""
+END_CMD
+
+    # Stage test
+    my $pid   = 0;
+    my $pipe  = IO::Pipe->new();
+    my $check = undef;
+
+    $target = sprintf('%s:%d', $target, $GMSPORT);
+
+    if (!defined($pid = fork()))
+    {
+        warn "[ERR] Failed to fork: $!";
+        return -1;
+    }
+
+    # Child: perform stage test
+    if ($pid == 0)
+    {
+        sleep(5);
+
+        warn '[INFO] Starting to test for staging: Initializaion';
+
+        my $stage_t
+            = Test::AnyStor::Stage->new(addr => $target, no_logout => 1);
+
+        # wait 10 mins(60 * 10)
+        #   - ok     => 0
+        #   - not ok => -1
+        $check = $stage_t->cluster_stage_test('Init', 60, 'before-init', 10);
+
+        # get writer pipe and then writes a line to that
+        $pipe->writer;
+        print $pipe $check;
+        $pipe->close;
+
+        exit(0);
+    }
+
+    # Parent: perform cluster initialization
+
+    # :WARNING 2018년 06월 14일 14시 11분 45초: by P.G.
+    # This seconds must be greater than the sleep seconds on the child.
+    # if not, 'configured' stage variation won't be catched.
+    sleep(10);
+
+    my $res = call_system($cmd);
+
+    if ($res < 0)
+    {
+        waitpid($pid, 0);
+        return $res;
+    }
+
+    # get reader pipe and then blocked until read a line from that
+    $pipe->reader;
+    $check = $pipe->getline;
+    $pipe->close;
+
+    waitpid($pid, 0);
+
+    warn '[INFO] Staging test has finished';
+
+    if (!defined($check) || $check)
+    {
+        warn '[ERR] Failed to pass for staging test';
+        return -1;
+    }
+
+    return 0;
+}
+
+sub join_cluster
+{
+    my $master = shift;
+    my $target = shift;
+
+    (my $config = $OPTS{CONFIG}) =~ s/^.*\///;
+
+    my $cmd = <<"END_CMD";
+    ssh root\@$master \\
+        "bash -c \\". /etc/default/gluesys; \\
+                    /usr/gms/bin/acinitctl register $target $master\\""
+END_CMD
+
+    # Staging test
+    my $pid   = 0;
+    my $pipe  = IO::Pipe->new();
+    my $check = undef;
+
+    $master = sprintf('%s:%d', $master, $GMSPORT);
+
+    if (!defined($pid = fork()))
+    {
+        warn "[ERR] Failed to fork: $!";
+        return -1;
+    }
+
+    if ($pid == 0)
+    {
+        sleep(5);
+
+        warn '[INFO] Starting to test for staging: Expansion';
+
+        my $stage_t
+            = Test::AnyStor::Stage->new(addr => $master, no_logout => 1);
+
+        # wait 10 mins(60 * 10)
+        #   - ok     => 0
+        #   - not ok => -1
+        $check
+            = $stage_t->cluster_stage_test('Expand', 60, 'before-init', 10);
+
+        $pipe->writer;
+        print $pipe $check;
+        $pipe->close;
+
+        exit(0);
+    }
+
+    sleep(10);
+
+    my $res = call_system($cmd);
+
+    if ($res < 0)
+    {
+        waitpid($pid, 0);
+        return $res;
+    }
+
+    $pipe->reader;
+    $check = $pipe->getline;
+    $pipe->close;
+
+    waitpid($pid, 0);
+
+    warn '[INFO] Staging test has finished';
+
+    if (!defined($check) || $check)
+    {
+        warn "[ERR] Failed to pass for staging test: $check";
+        return -1;
+    }
+
+    return 0;
+}
+
+sub run_test
+{
+    my $type       = shift;
+    my $master     = undef;
+    my $node_count = 0;
+    my @mr_t       = ();      # merge_test plus
+    my @last_mr_t  = ();      # merge_test plus
+
+    system('rm -rf /tmp/profile');
+
+    system('umount -t cifs -af');
+    system('umount -t nfs -af');
+
+    if (!defined($OPTS{NODES}))
+    {
+        my $args = _get_init_conf('test_nodes', $OPTS{CONFIG});
+        $OPTS{NODES} = $args;
+    }
+
+    if (!defined($ENV{TEST_NODES}) || $ENV{TEST_NODES} == 0)
+    {
+        $ENV{TEST_NODES} = 4;
+    }
+
+    if (!defined($ENV{SKIP_INSTALL}))
+    {
+        warn "[INFO] GitLab Environment Variables...";
+
+        foreach my $key (grep { $_ =~ m/^gitlab/; } keys(%ENV))
+        {
+            warn sprintf("[INFO] %-35s: %s", $key, $ENV{$key});
+        }
+    }
+
+    if (defined($ENV{gitlabMergeRequestId}))
+    {
+        my $project = $OPTS{GITLAB}->{PROJECT};
+        my $url     = $OPTS{GITLAB}->{URL};
+        my $token   = $OPTS{GITLAB}->{TOKEN};
+        my $prjid   = undef;
+        my $reqid   = $ENV{gitlabMergeRequestIid};
+
+        # 1. 프로젝트 식별자 획득
+        warn "[INFO] Trying to get the project ID: $project";
+
+        $prjid = get_project_id($url, $token, $project);
+
+        if (!defined($prjid))
+        {
+            warn "[ERR] Failed to get the project ID: $project";
+            goto ERROR;
+        }
+
+        warn "[INFO] Project '$project' ID: $prjid";
+
+        # 2. 병합 요청 식별자로 해당 요청에 대한 정보를 조회
+        warn "[INFO] Trying to get the merge request: $reqid";
+
+        @mr_t = get_tests_from_mr($url, $token, $prjid, $reqid);
+
+        if (!@mr_t)
+        {
+            warn '[WARN] This merge request did not have any test';
+        }
+        else
+        {
+            warn '[INFO] This merge request has additional test!';
+
+            map { warn "[INFO] Test: $_\n"; } @mr_t;
+        }
+
+        @last_mr_t = get_last_tests_from_mr($url, $token, $prjid, $reqid);
+
+        if (@last_mr_t)
+        {
+            warn '[INFO] This merge request has post tests!';
+
+            map { warn "[INFO] Test: $_\n"; } @last_mr_t;
+        }
+
+        cmd_tests_from_mr($url, $token, $prjid, $reqid);
+
+        if (
+            replace_test_to_last(\@mr_t, \@last_mr_t,
+                $OPTS{IGNORE_TEST_FILTER}) == -1
+            )
+        {
+            goto ERROR;
+        }
+    }
+
+    my $latest;
+
+    my @log_nodes = ();
+
+    $OPTS{NODES} = [$OPTS{NODES}] if (ref($OPTS{NODES}) ne 'ARRAY');
+
+    foreach my $node (@{$OPTS{NODES}})
+    {
+        push(@log_nodes, $node);
+
+        $node_count++;
+
+        if ($node_count > $ENV{TEST_NODES})
+        {
+            warn sprintf(
+                "[INFO] Test quit : merge_request CMD : [node_count/test_nodes] = [%d/%d]\n",
+                $node_count, $ENV{TEST_NODES});
+            last;
+        }
+
+        $ENV{GMS_TEST_ADDR} = "$node:$GMSPORT";
+
+        if (!defined($ENV{SKIP_INSTALL}))
+        {
+            $latest = $node;
+
+            warn "[INFO] Pre-processing: $node($node_count)";
+
+            my $cmd
+                = sprintf('%s --cmd=%s --node=%s --snapshot %s --config=%s',
+                '/usr/gms/xt/vmware_tool', 'goto-snapshot', $node,
+                '"Test Ready"',            $OPTS{CONFIG});
+
+            if (call_system($cmd) < 0)
+            {
+                warn "[ERR] Failed to revert VM: $node => Test Ready";
+                goto ERROR;
+            }
+
+            $cmd = sprintf('%s --cmd=%s --node=%s --config=%s',
+                '/usr/gms/xt/vmware_tool', 'start', $node, $OPTS{CONFIG});
+
+            if (call_system($cmd) < 0)
+            {
+                warn "[ERR] Failed to start VM: $node\n";
+                goto ERROR;
+            }
+
+            sleep(30);
+
+            if (!isboot_use_ping($node, 180))
+            {
+                goto ERROR;
+            }
+
+            warn "[INFO] Deploying AnyStor-E: $node($node_count)";
+
+            my $retry_cmd = 3;
+
+            while ($retry_cmd-- > 0)
+            {
+                last if (!deploy_to($node));
+
+                warn "[WARN] Failed to deploy AnyStor-E: $node";
+
+                sleep(10);
+            }
+
+            goto ERROR if ($retry_cmd < 0);
+
+            warn "[INFO] Installing AnyStor-E: $node($node_count)";
+
+            if (install_to($node))
+            {
+                warn "[ERR] Failed to install: $node($node_count)";
+                goto ERROR;
+            }
+
+            next if (uc($type) eq 'INSTALL');
+
+            if ($ENV{SKIP_CONFIG})
+            {
+                warn "[INFO] Config has skipped: $node($node_count)";
+                goto END_INIT;
+            }
+
+            if (scalar(grep { $_ =~ /config_rollback\.t/ } @mr_t)
+                || (defined($OPTS{RB_TEST}) && $OPTS{RB_TEST} =~ /config/))
+            {
+                rollback_test('CONFIG', $node);
+            }
+
+            ping(host => $node);
+
+            warn "[INFO] Configuring: $node($node_count)";
+
+            if (config_node($node))
+            {
+                warn "[WARN] Failed to config node: $node($node_count)";
+                goto ERROR;
+            }
+
+            if ($ENV{SKIP_INIT})
+            {
+                warn "[INFO] Initialization has skipped: $node($node_count)";
+                goto END_INIT;
+            }
+
+            ping(host => $node);
+
+            if (!$master)
+            {
+                $master = $node;
+
+                if (scalar(grep { $_ =~ /init_rollback\.t/ } @mr_t)
+                    || (defined($OPTS{RB_TEST}) && $OPTS{RB_TEST} =~ /init/))
+                {
+                    rollback_test('INIT', $node);
+                }
+
+                warn "[INFO] Initializing the node: $node($node_count)";
+
+                if (init_cluster($node))
+                {
+                    warn "[WARN] Failed to initialize";
+                    goto ERROR;
+                }
+
+                warn '[INFO] Waiting for 30s to gather statistics...';
+                sleep(30);
+            }
+            else
+            {
+                if (scalar(grep { $_ =~ /join_rollback\.t/ } @mr_t)
+                    || (defined($OPTS{RB_TEST}) && $OPTS{RB_TEST} =~ /join/))
+                {
+                    $ENV{GMS_JOIN_TGT_ADDR}    = $node;
+                    $ENV{GMS_JOIN_MASTER_ADDR} = $master;
+
+                    rollback_test('JOIN', $node);
+                }
+
+                warn "[INFO] Joining to the cluster: $node($node_count)";
+
+                if (join_cluster($master, $node))
+                {
+                    warn '[WARN] Failed to join';
+                    goto ERROR;
+                }
+            }
+        }
+
+    END_INIT:
+        warn sprintf('[INFO] %s-test performing: %s(%d)',
+            ucfirst($type), $node, $node_count);
+
+        given (uc($type))
+        {
+            when ('MERGE')
+            {
+                if (defined($ENV{SKIP_MERGE_TEST})
+                    && $ENV{SKIP_MERGE_TEST} == 1)
+                {
+                    warn "[INFO] Merge-test has skipped: $node";
+
+                    if (@mr_t && run_tap(\@mr_t))
+                    {
+                        warn sprintf('[ERR] Additional test failure: %s',
+                            join(', ', @mr_t));
+                        goto ERROR;
+                    }
+                }
+                elsif (merge_test($node, \@mr_t))
+                {
+                    goto ERROR;
+                }
+            }
+            when ('DAILY')
+            {
+                my @remain_tests = ();
+
+                if (function_test(
+                    $node, $OPTS{IGNORE_TEST_FILTER},
+                    \@remain_tests
+                ))
+                {
+                    goto ERROR;
+                }
+
+                push(@last_mr_t, @remain_tests);
+
+                @last_mr_t = uniq(@last_mr_t);
+            }
+            when ('STRESS')
+            {
+                if (stress_test($node))
+                {
+                    goto ERROR;
+                }
+            }
+            when ('RELEASE')
+            {
+                my @remain_tests = ();
+
+                if (function_test(
+                    $node, $OPTS{IGNORE_TEST_FILTER},
+                    \@remain_tests
+                ))
+                {
+                    goto ERROR;
+                }
+
+                push(@last_mr_t, @remain_tests);
+
+                @last_mr_t = uniq(@last_mr_t);
+            }
+        }
+
+        warn sprintf(
+            "[INFO] %s-test has finished: %s(%d)\n\n",
+            ucfirst(lc($type)),
+            $node, $node_count
+        );
+    }
+
+    warn sprintf("[DEBUG] Post-test : %s\n", join(', ', @last_mr_t));
+
+    if (@last_mr_t && run_tap(\@last_mr_t))
+    {
+        warn
+            sprintf('[ERR] Post test has failed: %s', join(', ', @last_mr_t));
+        goto ERROR;
+    }
+
+    # profile_archive();
+
+    return 0;
+
+ERROR:
+    warn sprintf('[ERR] %s-test has failed with unexpected status(%d)',
+        ucfirst(lc($type)), $node_count);
+
+    nodes_archive('', \@log_nodes, $OPTS{JOB_NAME}, $OPTS{BUILD_NUMBER})
+        if (@log_nodes);
+
+    exit 1;
+}
+
+sub node_archive
+{
+    my $nodes = _get_init_conf('test_nodes', $OPTS{CONFIG});
+
+    nodes_archive('', $nodes, $OPTS{JOB_NAME}, $OPTS{BUILD_NUMBER});
+
+    exit 1;
+}
+
+sub rollback_test
+{
+    my $step   = shift;
+    my $target = shift;
+    my @tests  = ();
+
+    if (!defined($step) || !defined($target))
+    {
+        warn '[ERR] Invalid parameter';
+        return 1;
+    }
+
+    return 0 if (!defined($OPTS{RB_TEST}));
+
+    push(@tests, 'rollback/' . lc($step) . '_rollback.t');    #foreach (@tmp);
+
+    return run_tap(\@tests);
+}
+
+sub merge_test
+{
+    my $host     = shift;
+    my $add_test = shift;
+
+    if (!defined($host))
+    {
+        warn "Unknown host";
+        return -1;
+    }
+
+    my @TESTS = ('merge_test.t');
+
+    my @add_test_except_rollback = ();
+    my @rollback_tests
+        = ('config_rollback.t', 'init_rollback.t', 'join_rollback.t');
+
+    foreach my $each_test (@$add_test)
+    {
+        next if (grep { $each_test =~ /$_/ } @rollback_tests);
+
+        push(@add_test_except_rollback, $each_test);
+    }
+
+    push(@TESTS, @add_test_except_rollback) if (@add_test_except_rollback);
+
+    return run_tap(\@TESTS);
+}
+
+sub function_test
+{
+    my $host         = shift;
+    my $ignore_tests = shift;
+    my $remain_tests = shift;
+
+    if (!defined($host))
+    {
+        warn 'Unknown host';
+        return -1;
+    }
+
+    my @TESTS = ('function_test.t');
+
+    if (defined($ignore_tests))
+    {
+        my $tmp = undef;
+
+        if (ref($ignore_tests) eq 'ARRAY')
+        {
+            $tmp = join(',', @{$ignore_tests});
+        }
+
+        $ENV{IGNORED_TESTS} = $tmp;
+
+        my $sub_mode = $ENV{FUNC_SUB_MOD};
+
+        if (!defined($sub_mode) || $sub_mode eq '/')
+        {
+            push(
+                @{$remain_tests},
+                grep { $_ =~ /^function\// } @{$ignore_tests}
+            );
+        }
+        else
+        {
+            push(
+                @{$remain_tests},
+                grep { $_ =~ /^function\/$sub_mode\// } @{$ignore_tests}
+            );
+        }
+    }
+
+    warn sprintf("[INFO] TESTS: %s\n", join(', ', @TESTS));
+
+    return run_tap(\@TESTS);
+}
+
+sub stress_test
+{
+    my $host = shift;
+
+    my @TESTS = ('stress_test.t');
+
+    return run_tap(\@TESTS);
+}
+
+sub run_tap
+{
+    my $test_scripts = shift;
+
+    if (!defined($test_scripts))
+    {
+        warn '[ERR] Invalid parameter';
+        return 1;
+    }
+
+    my $failure    = 0;
+    my $start_at   = time;
+    my $aggregator = TAP::Parser::Aggregator->new;
+
+    foreach my $t (uniq(@$test_scripts))
+    {
+        warn sprintf("[INFO] <<< MAIN TEST CATEGORY >>>: '%s'...", $t);
+
+        my $file   = '';
+        my $t_argc = (scalar(split(/\s+/, $t)));
+
+        # User defined test script
+        if ($t_argc > 1)
+        {
+            $file = "$t";
+        }
+
+        # GMS defined function test case
+        else
+        {
+            $file = "$GMSROOT/xt/$t";
+        }
+
+        my $tap_parser;
+
+        if ($t_argc > 1)
+        {
+            $tap_parser = TAP::Parser->new({exec => [$file], merge => 1});
+        }
+        else
+        {
+            $tap_parser = TAP::Parser->new({source => $file, merge => 1});
+        }
+
+        while (my $result = $tap_parser->next)
+        {
+            printf "%s\n", $result->as_string;
+        }
+
+        if (scalar($tap_parser->failed) || $tap_parser->exit)
+        {
+            warn sprintf('[ERR] %s test has failed with abnormal status: %d',
+                $t, $tap_parser->exit);
+
+            $failure++;
+        }
+
+        warn "[INFO] Test Summary\n\n";
+
+        (scalar($tap_parser->failed) || $tap_parser->exit)
+            ? paint_err()
+            : paint_info();
+
+        printf(
+            "Test: %s\n- Passed: %s\n- Failed: %s\n- Start: %s\n- End: %s\n",
+            $t,
+            scalar($tap_parser->passed),
+            scalar($tap_parser->failed),
+            strftime('%Y-%m-%d %T', localtime($tap_parser->start_time)),
+            strftime('%Y-%m-%d %T', localtime($tap_parser->end_time))
+        );
+
+        $aggregator->add($file, $tap_parser);
+        paint_reset();
+    }
+
+    (scalar($aggregator->failed) || $failure) ? paint_err() : paint_info();
+
+    printf("\nTotal Test Summary\n\n");
+    printf(
+        "- Test List: %s\n- Passed: %s\n- Failed: %s\n- Elapsed: %ss\n\n",
+        join(', ', uniq(@$test_scripts)),
+        scalar($aggregator->passed),
+        scalar($aggregator->failed),
+        time - $start_at
+    );
+
+    paint_reset();
+
+    return $failure;
+}
+
+sub get_project_id
+{
+    my $url     = shift;
+    my $token   = shift;
+    my $project = shift;
+
+    my $prj_sname = (split(/\//, $project))[-1];
+
+    my $ua = Mojo::UserAgent->new();
+    my $tx = $ua->get("$url/api/v4/projects?search=$prj_sname&per_page=100" =>
+            {'Private-Token' => $token});
+
+    if ($tx->res->code != 200)
+    {
+        warn "[ERR] GitLab API error: ${\Dumper($tx->res)}";
+        return;
+    }
+
+    foreach my $prj (@{$tx->res->json})
+    {
+        if ($prj->{path_with_namespace} eq $project)
+        {
+            return $prj->{id};
+        }
+    }
+
+    return;
+}
+
+sub get_tests_from_mr
+{
+    my $url   = shift;
+    my $token = shift;
+    my $prjid = shift;
+    my $reqid = shift;
+
+    my $ua = Mojo::UserAgent->new();
+    my $tx = $ua->get("$url/api/v4/projects/$prjid/merge_requests/$reqid" =>
+            {'Private-Token' => $token});
+
+    my $merge_request = $tx->res->json;
+
+    warn
+        "[INFO] Getting tests from MR: $url/api/v4/projects/$prjid/merge_requests/$reqid";
+
+    # 4. 병합 요청 정보의 설명에서 실행할 검사 스크립트를 가리키는 구문을
+    #    추출하여 대상 스크립트 경로 획득
+    #
+    #   - 예제
+    #       ~~ blah blah ~~
+    #       * test: basic/login.t
+    #       * test: improved/account/3199.t
+    #       * test: bugs/cluster/3286.t
+    return
+        if (!defined($merge_request->{description})
+        || !length($merge_request->{description}));
+
+    my @TESTS = ();
+
+    foreach my $line (split(/\n+/, $merge_request->{description}))
+    {
+        chomp($line);
+
+        if ($line =~ m/^\s*[-\*]\s*test\s*:\s*(?<test>.+)$/i)
+        {
+            my $tmp = $+{test};
+            chop($tmp) if ($tmp =~ m/\r$/);
+            push(@TESTS, find_script($tmp));
+        }
+    }
+
+    return @TESTS;
+}
+
+sub get_last_tests_from_mr
+{
+    my $url   = shift;
+    my $token = shift;
+    my $prjid = shift;
+    my $reqid = shift;
+
+    my $ua = Mojo::UserAgent->new();
+    my $tx = $ua->get("$url/api/v4/projects/$prjid/merge_requests/$reqid" =>
+            {'Private-Token' => $token});
+
+    my $merge_request = $tx->res->json;
+
+    warn
+        "[INFO] Getting last test from MR: $url/api/v4/projects/$prjid/merge_requests/$reqid";
+
+    # 4. 병합 요청 정보의 설명에서 실행할 검사 스크립트를 가리키는 구문을
+    #    추출하여 대상 스크립트 경로 획득
+    #
+    #   - 예제
+    #       ~~ blah blah ~~
+    #       * last_test: basic/login.t
+    #       * last_test: perl regression/test.t -h
+    #       * last_test: perl regression/test.sh exp1 exp2
+
+    return
+        if (!defined($merge_request->{description})
+        || !length($merge_request->{description}));
+
+    my @TESTS = ();
+
+    foreach my $line (split(/\n+/, $merge_request->{description}))
+    {
+        chomp($line);
+
+        if ($line =~ m/^\s*[-\*]\s*last_test\s*:\s*(?<test>.+)$/i)
+        {
+            my $tmp = $+{test};
+            chop($tmp) if ($tmp =~ m/\r$/);
+            push(@TESTS, find_script($tmp));
+        }
+    }
+
+    return @TESTS;
+}
+
+sub cmd_tests_from_mr
+{
+    my $url   = shift;
+    my $token = shift;
+    my $prjid = shift;
+    my $reqid = shift;
+
+    my $ua = Mojo::UserAgent->new();
+    my $tx = $ua->get("$url/api/v4/projects/$prjid/merge_requests/$reqid" =>
+            {'Private-Token' => $token});
+
+    my $merge_request = $tx->res->json;
+
+    warn
+        "[INFO] Getting cmd test from MR: $url/api/v4/projects/$prjid/merge_requests/$reqid";
+
+    # 4. 병합 요청 정보의 설명에서 실행할 검사 스크립트를 가리키는 구문을
+    #    추출하여 대상 스크립트 경로 획득
+    #
+    #   - 예제
+    #       ~~ blah blah ~~
+    #       * cmd: skip_merge_test
+    #       * cmd: test_nodes = 2
+    #       * cmd: install_only
+    #       * cmd: config_only
+
+    return
+        if (!defined($merge_request->{description})
+        || !length($merge_request->{description}));
+
+    foreach my $line (split(/\n+/, $merge_request->{description}))
+    {
+        chomp($line);
+
+        if ($line =~ m/^\s*[-\*]\s*cmd\s*:\s*skip_merge_test\s*$/i)
+        {
+            $ENV{SKIP_MERGE_TEST} = 1;
+            warn "[INFO] Parsing merge_request cmd: skip_merge_test";
+        }
+
+        if ($line =~ m/^\s*[-\*]\s*cmd\s*:\s*test_nodes\s*=\s*(\d+)\s*$/i)
+        {
+            $ENV{TEST_NODES} = $1;
+            warn
+                "[INFO] Parsing merge_request cmd: test_nodes = $ENV{TEST_NODES}";
+        }
+
+        if ($line =~ m/^\s*[-\*]\s*cmd\s*:\s*install_only\s*$/i)
+        {
+            $ENV{SKIP_CONFIG}     = 1;
+            $ENV{SKIP_MERGE_TEST} = 1;
+            warn "[INFO] Parsing merge_request cmd: install_only";
+        }
+
+        if ($line =~ m/^\s*[-\*]\s*cmd\s*:\s*config_only\s*$/i)
+        {
+            $ENV{SKIP_INIT}       = 1;
+            $ENV{SKIP_MERGE_TEST} = 1;
+            warn "[INFO] Parsing merge_request cmd: config_only";
+            last;
+        }
+    }
+
+    return 0;
+}
+
+sub replace_test_to_last
+{
+    my $iter_test_set      = shift;
+    my $last_test_set      = shift;
+    my $ignore_test_filter = shift;
+
+    my @match = ();
+
+    if (defined($ignore_test_filter)
+        && ref($ignore_test_filter) eq 'ARRAY')
+    {
+        # 반복 테스트에 있는 last test file은 제거
+        if (defined($iter_test_set) && ref($iter_test_set) eq 'ARRAY')
+        {
+            for (my $i = 0; $i < @{$iter_test_set}; $i++)
+            {
+                next
+                    if (grep { $iter_test_set->[$i] !~ /$_$/ }
+                    @{$ignore_test_filter});
+
+                push(@match, $iter_test_set->[$i]);
+                splice(@{$iter_test_set}, $i ? $i : $i--, 1);
+            }
+        }
+
+        if (!defined($last_test_set) || ref($last_test_set) ne 'ARRAY')
+        {
+            warn "[ERR] Failed to add post-test: ${\Dumper(\@match)}";
+            return -1;
+        }
+
+        # 제거한 last test file은 마지막 테스트 수행시 호출하도록 추가
+        if (@match)
+        {
+            push(@{$last_test_set}, @match);
+        }
+
+        $last_test_set = [uniq(@{$last_test_set})];
+    }
+
+    return scalar @match;
+}
+
+# sorry irregal variable scope! by hgichon 2018/04/24
+#
+our @SCRIPT_LIST;
+
+sub find_script
+{
+    my $t = shift;
+
+    @SCRIPT_LIST = ();
+
+    my $t_argc = (scalar(split(/\s+/, $t)));
+
+    # User defined test script
+    if ($t_argc > 1)
+    {
+        return $t;
+    }
+
+    # GMS defined test function case
+    if (-f "$GMSROOT/xt/$t")
+    {
+        return $t;
+    }
+
+    if (-d "$GMSROOT/xt/$t")
+    {
+        find(
+            {
+                wanted   => \&wanted_function_script,
+                no_chdir => 0
+            },
+            "$GMSROOT/xt/$t"
+        );
+    }
+
+    return @SCRIPT_LIST;
+
+}
+
+sub wanted_function_script
+{
+    my $file = $File::Find::name;
+
+    return unless (-f $file && $file =~ m/\.t$/);
+
+    my @script = split(/\//, $file);
+
+    shift(@script);    # null ?
+    shift(@script);    # usr
+    shift(@script);    # gms
+    shift(@script);    # t
+
+    push(@SCRIPT_LIST, join('/', @script));
+}
+
+=encoding utf8
+
+=head1 NAME
+
+gms-tester - GMS 통합 검사 도구
+
+=head1 SYNOPSIS
+
+=head1 DESCRIPTION
+
+=head1 COPYRIGHT AND LICENSE
+
+Copyright 2015-2021. Gluesys Co., Ltd. All rights reserved.
+
+=head1 SEE ALSO
+
+=cut

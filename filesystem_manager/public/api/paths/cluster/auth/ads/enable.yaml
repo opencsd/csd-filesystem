@@ -1,0 +1,18 @@
+post:
+  x-mojo-to: 'Cluster::Auth::ADS#enable'
+  operationId: cluster_auth_ads_enable
+  tags:
+    - auth
+    - cluster
+  requestBody:
+    required: true
+    description: request
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/ADSConfig'
+  responses:
+    204:
+      description: ADS authentication enabled successfully.
+    401:
+      $ref: '#/components/responses/Unauthorized'

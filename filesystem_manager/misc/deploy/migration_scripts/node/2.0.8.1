@@ -1,0 +1,16 @@
+#!/bin/sh
+
+[ -f /var/lib/gms/functions ] && . /var/lib/gms/functions
+
+log "INFO" "[NODE] Migration for 2.0.8.1"
+
+log "INFO" "[NODE] start license reloading"
+
+/usr/gms/misc/mntgluster/gms_reloads/license_reload
+
+if [ $? = 1 ]; then
+    log "INFO" "[NODE] License reload success"
+else
+    log "ERR" "[NODE] License reload failed"
+fi
+

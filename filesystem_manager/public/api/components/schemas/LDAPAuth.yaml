@@ -1,0 +1,7 @@
+description: present LDAP authentication
+type: object
+properties:
+  BindDN:
+    type: integer
+  BindPw:
+    type: string

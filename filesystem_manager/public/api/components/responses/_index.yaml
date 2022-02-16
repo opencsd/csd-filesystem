@@ -1,0 +1,29 @@
+ADSConfig:
+  $ref: './ADSConfig.yaml'
+
+ClientConnections:
+  $ref: './ClientConnections.yaml'
+
+ClusterStatus:
+  $ref: './ClusterStatus.yaml'
+
+Events:
+  $ref: './Events.yaml'
+
+FsUsages:
+  $ref: './FsUsages.yaml'
+
+NodeStatuses:
+  $ref: './NodeStatuses.yaml'
+
+NotFound:
+  $ref: './NotFound.yaml'
+
+SignedIn:
+  $ref: './SignedIn.yaml'
+
+Tasks:
+  $ref: './Tasks.yaml'
+
+Unauthorized:
+  $ref: './Unauthorized.yaml'

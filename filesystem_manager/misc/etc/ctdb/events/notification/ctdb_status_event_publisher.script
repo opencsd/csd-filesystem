@@ -1,0 +1,28 @@
+#!/bin/sh
+
+case "$1" in
+    startup)
+        # Publish GMS event message saying that the node is startup:
+        girasole event create \
+            --scope=$HOSTNAME \
+            --code=CTDB_STARTUP \
+            --level=INFO \
+            --message "CTDB is READY: $HOSTNAME" &>/dev/null &
+    ;;
+    unhealthy)
+        # Publish GMS event message saying that the node is unhealthy:
+        girasole event create \
+            --scope=$HOSTNAME \
+            --code=CTDB_UNHEALTHY \
+            --level=WARNING \
+            --message "CTDB become UNHEALTHY: $HOSTNAME" &>/dev/null &
+    ;;
+    healthy)
+        # Publish GMS event message saying that the node is healthy:
+        girasole event create \
+            --scope=$HOSTNAME \
+            --code=CTDB_HEALTHY \
+            --level=INFO \
+            --message "CTDB become HEALTHY: $HOSTNAME" &>/dev/null &
+    ;;
+esac

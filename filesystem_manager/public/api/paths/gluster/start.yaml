@@ -1,0 +1,19 @@
+post:
+  x-mojo-to: 'Cluster::Gluster#start'
+  operationId: gluster_start
+  tags:
+    - gluster
+  responses:
+    200:
+      description: Result
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/DefaultResponse'
+              - type: object
+                properties:
+                  entity:
+                    type: integer
+    401:
+      $ref: '#/components/responses/Unauthorized'

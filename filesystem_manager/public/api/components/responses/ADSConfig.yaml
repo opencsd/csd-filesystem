@@ -1,0 +1,12 @@
+description: ADS authentication configuration
+content:
+  application/json:
+    schema:
+      allOf:
+        - $ref: '#/components/schemas/DefaultResponse'
+        - type: object
+          properties:
+            entity:
+              type: object
+              items:
+                $ref: '#/components/schemas/ADSConfig'

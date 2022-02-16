@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+	<title><%= title %></title>
+
+	<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+	<!--<meta http-equiv="cache-control" content="no-cache">
+	<meta http-equiv="Pragma" content="no-cache">
+	<meta http-equiv="Expires" content="-1">-->
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+
+	<link rel="stylesheet" type="text/css" href="/js/extjs/resources/ext-theme-gray/ext-theme-gray-all.css"/>
+	<![if lte IE 8]><link rel="stylesheet" type="text/css" href="/admin/css/ie8.css"/><![endif]>
+	<![if gt IE 8]><link rel="stylesheet" type="text/css" href="/admin/css/common.css"/><![endif]>
+
+	 <!-- 관리자 지정 CSS -->
+	<link rel="stylesheet" type="text/css" href="/admin/css/admin.css?v=1"/>
+	<script type="text/javascript" src="/js/jquery/jquery-1.12.4.min.js"></script>
+	<script type="text/javascript" src="/js/libraries/jquery.cookie.js"></script>
+	<script type="text/javascript" src="/js/libraries/jquery.check.js"></script>
+
+	<!-- ExtJS 파일 로드 -->
+	<script type="text/javascript" src="/js/extjs/ext-all-debug.js"></script>
+
+	<!-- ExtJS 언어 파일 로드 -->
+	<script type="text/javascript" src="/js/extjs/locale/ext-lang-<%= $lang %>.js"></script>
+
+	<!-- 공통 자바스크립트 언어 로드 -->
+	<script type="text/javascript" src="/js/language/<%= $lang %>.js?_dc=<%= time() %>"></script>
+
+	<!-- 공통 함수 -->
+	<script type="text/javascript" src="/js/libraries/common.js"></script>
+	<!--
+	<script type="text/javascript" src="/js/libraries/aes.js?_dc=<%= time() %>"></script>
+	<script type="text/javascript" src="/js/libraries/aes-ctr.js?_dc=<%= time() %>"></script>
+	-->
+
+	<!-- 관리자 라이브러리 -->
+	<script type="text/javascript" src="/admin/js/baseLayout.js"></script>
+	<script type="text/javascript" src="/admin/js/admin_lib.js?_dc=<%= time() %>"></script>
+
+	<!-- 진행률 -->
+	<script type="text/javascript" src="/admin/js/manager_node_stage.js?_dc=<%= time() %>"></script>
+
+	<!-- 초기 설정 페이지 -->
+	<script type="text/javascript" src="/setup/init.js?_dc=<%= time() %>"></script>
+</head>
+
+<body><%= content %></body>
+
+</html>

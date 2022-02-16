@@ -1,0 +1,37 @@
+post:
+  x-mojo-to: 'Cluster::General#reload_mds'
+  operationId: cluster_general_reload_mds
+  tags:
+    - cluster
+    - init
+    - mds
+  requestBody:
+    required: true
+    description: Request
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            Expand_Host:
+              type: string
+            Expand_IP:
+              type: string
+          required:
+            - Expand_Host
+  responses:
+    200:
+      description: Result
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/DefaultResponse'
+              - type: object
+                properties:
+                  entity:
+                    type: array
+                    items:
+                      type: string
+    401:
+      $ref: '#/components/responses/Unauthorized'

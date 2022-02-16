@@ -1,0 +1,12 @@
+description: Statuses of each nodes consist this GMS cluster
+content:
+  application/json:
+    schema:
+      allOf:
+        - $ref: '#/components/schemas/DefaultResponse'
+        - type: object
+          properties:
+            entity:
+              type: array
+              items:
+                $ref: '#/components/schemas/NodeStatus'

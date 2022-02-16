@@ -1,0 +1,30 @@
+post:
+  x-mojo-to: 'Etcd#add_member'
+  operationId: etcd_add_member
+  tags:
+      - etcd
+  requestBody:
+    required: true
+    description: 'Add an etcd member'
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            Cluster:
+              type: string
+            Name:
+              type: string
+            URI:
+              type: string
+            Force:
+              type: boolean
+              default: false
+          required:
+            - Name
+            - URI
+  responses:
+    204:
+      description: New etcd member is added successfully.
+    401:
+      $ref: '#/components/responses/Unauthorized'

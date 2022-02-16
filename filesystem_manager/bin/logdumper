@@ -1,0 +1,193 @@
+#!/usr/bin/perl -I/usr/gms/libgms
+
+use v5.14;
+
+use strict;
+use warnings;
+use utf8;
+
+our $AUTHORITY = 'cpan:gluesys';
+
+use Data::Dumper;
+use GMS::Common::Logger;
+use GMS::Common::OptArgs;
+use JSON;
+use Mojo::UserAgent;
+use Net::OpenSSH;
+use Try::Tiny;
+
+#-----------------------------------------------------------------------------
+#   Main
+#-----------------------------------------------------------------------------
+my $parser;
+my %OPTS;
+
+catch_sig_warn(
+    datetime => 0,
+    procname => 0,
+    pid      => 0,
+    level    => 1,
+    filename => 0,
+    linenum  => 0
+);
+
+logmask(LOG_INFO);
+
+$parser = Common::OptArgs->new(
+    commands => [
+        {
+            path     => 'archive',
+            desc     => 'Archive all of the logs',
+            callback => sub { exit do_archive(shift); },
+        }
+    ],
+    options => [
+        {
+            pinned   => 1,
+            short    => 'd',
+            long     => 'dest',
+            desc     => 'Destination IP address',
+            valdesc  => '<DESTINATION>',
+            callback => sub { $OPTS{DESTINATION} = shift; },
+        },
+        {
+            pinned   => 1,
+            short    => 'l',
+            long     => 'location',
+            desc     => 'Destination Location',
+            valdesc  => '<LOCATION>',
+            callback => sub { $OPTS{LOCATION} = shift; },
+        },
+        {
+            pinned   => 1,
+            short    => 's',
+            long     => 'source',
+            desc     => 'Source IP address',
+            valdesc  => '<SOURCE>',
+            callback => sub { $OPTS{SOURCE} = shift; },
+        },
+        {
+            pinned   => 1,
+            short    => 'p',
+            long     => 'postfix',
+            desc     => 'Postfix',
+            valdesc  => '<POSTFIX>',
+            callback => sub { $OPTS{POSTFIX} = shift; },
+        },
+    ],
+    help_cmd  => 1,
+    help_lopt => 1,
+);
+
+$parser->parse(args => \@ARGV);
+
+exit 0;
+
+#---------------------------------------------------------------------------
+#   Callbacks
+#---------------------------------------------------------------------------
+sub do_archive
+{
+    my $srcip    = $OPTS{SOURCE};
+    my $destip   = $OPTS{DESTINATION};
+    my $destpath = $OPTS{LOCATION};
+    my $postfix  = $OPTS{POSTFIX};
+
+    system("rm -rf /tmp/$srcip-$postfix") if (-e "/tmp/$srcip-$postfix");
+
+    my $ret = _scp_get_r($srcip, '/mnt/private', "/tmp/$srcip-$postfix");
+    return $ret if ($ret);
+
+    $ret = _scp_get_r($srcip, '/var/log', "/tmp/$srcip-$postfix");
+    return $ret if ($ret);
+
+    $ret = _scp_put_r("/tmp/$srcip-$postfix", $destip, $destpath);
+    return $ret if ($ret);
+
+    return $ret;
+}
+
+#-----------------------------------------------------------------------------
+#   Private
+#-----------------------------------------------------------------------------
+sub _scp_get_r
+{
+    my $srcip     = shift;
+    my $srcpath   = shift;
+    my $destpath  = shift;
+    my $stderr_fh = undef;
+
+    open($stderr_fh, '>>', '/dev/null')
+        || die "Failed to open: /dev/null: $!";
+
+    my %opts = (
+        user                  => 'root',
+        port                  => '22',
+        master_stderr_discard => 1,
+        default_stderr_fh     => $stderr_fh,
+    );
+
+    system("mkdir -p $destpath");
+
+    my $ssh = Net::OpenSSH->new($srcip, %opts);
+    if ($ssh->error)
+    {
+        close($stderr_fh) if ($stderr_fh);
+        return -1;
+    }
+
+    $ssh->scp_get({recursive => 1, quiet => 1}, "$srcpath", "$destpath");
+
+    close($stderr_fh) if ($stderr_fh);
+
+    return 0;
+}
+
+sub _scp_put_r
+{
+    my $srcpath  = shift;
+    my $destip   = shift;
+    my $destpath = shift;
+
+    my %opts = (
+        user                  => 'root',
+        port                  => '22',
+        master_stderr_discard => 1,
+    );
+
+    my $ssh = Net::OpenSSH->new($destip, %opts);
+    if ($ssh->error)
+    {
+        return -1;
+    }
+
+    $ssh->system("mkdir -p $destpath");
+    if ($ssh->error)
+    {
+        return -1;
+    }
+
+    $ssh->scp_put({recursive => 1, quiet => 1}, "$srcpath", "$destpath");
+
+    return 0;
+}
+
+__END__
+
+=encoding utf8
+
+=head1 NAME
+
+logdumper - 
+
+=head1 SYNOPSIS
+
+=head1 DESCRIPTION
+
+=head1 COPYRIGHT AND LICENSE
+
+Copyright 2015-2021. Gluesys Co., Ltd. All rights reserved.
+
+=head1 SEE ALSO
+
+=cut

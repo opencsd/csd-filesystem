@@ -1,0 +1,140 @@
+;--------------------------------------------------------------------------------------------------------------
+;ID = 환경 변수 설정
+;--------------------------------------------------------------------------------------------------------------
+"$CI_ARCH_IP=EnvGet('CI_ARCH_IP')" 계산한다.
+; 리눅스 클라이언트의 VM 파일 경로
+"$CI_BUILD_VM=EnvGet('CI_BUILD_VM')" 계산한다.
+; DNS 서버 
+"$CI_DNS=EnvGet('CI_DNS')" 계산한다.
+; 리눅스 클라이언트의 호스트명
+"$CI_HOST=EnvGet('CI_HOST')" 계산한다.
+
+; 리눅스 클라이언트의 관리 네트워크 이더넷
+"$CI_M_ETH=EnvGet('CI_M_ETH')" 계산한다.
+; 리눅스 클라이언트의 게이트웨이
+"$CI_M_GW=EnvGet('CI_M_GW')" 계산한다.
+; 리눅스 클라이언트의 관리 IP주소
+"$CI_M_IP=EnvGet('CI_M_IP')" 계산한다.
+; 리눅스 클라이언트의 관리 이더넷 Netmask
+"$CI_M_NET=EnvGet('CI_M_NET')" 계산한다.
+
+; 리눅스 클라이언트의 서비스 네트워크 이더넷
+"$CI_S_ETH=EnvGet('CI_S_ETH')" 계산한다.
+; 리눅스 클라이언트의 서비스 IP주소
+"$CI_S_IP=EnvGet('CI_S_IP')" 계산한다.
+; 리눅스 클라이언트의 서비스 이더넷 Netmask
+"$CI_S_NET=EnvGet('CI_S_NET')" 계산한다.
+
+; Anystor-E의 마지막 스토리지 IP
+"$CI_STG_END=EnvGet('CI_STG_END')" 계산한다.
+; Anystor-E의 스토리지 이더넷 Netmask
+"$CI_STG_MASK=EnvGet('CI_STG_MASK')" 계산한다.
+$CI_STG_MASK=255.0.0.0 설정한다.
+"$CI_STG_MASK_1=stringsplit('|$CI_STG_MASK|','.')[1]" 계산한다.
+"$CI_STG_MASK_2=stringsplit('|$CI_STG_MASK|','.')[2]" 계산한다.
+"$CI_STG_MASK_3=stringsplit('|$CI_STG_MASK|','.')[3]" 계산한다.
+"$CI_STG_MASK_4=stringsplit('|$CI_STG_MASK|','.')[4]" 계산한다.
+; Anystor-E의 처음 스토리지 IP
+"$CI_STG_START_IP=EnvGet('CI_STG_START')" 계산한다.
+; Anystor-E의 첫번째 노드 스토리지 IP
+"$CI_STG1_IP=EnvGet('CI_STG1_IP')" 계산한다.
+"$CI_STG1_IP_1=stringsplit('|$CI_STG1_IP|','.')[1]" 계산한다.
+"$CI_STG1_IP_2=stringsplit('|$CI_STG1_IP|','.')[2]" 계산한다.
+"$CI_STG1_IP_3=stringsplit('|$CI_STG1_IP|','.')[3]" 계산한다.
+"$CI_STG1_IP_4=stringsplit('|$CI_STG1_IP|','.')[4]" 계산한다.
+; Anystor-E의 두번째 노드 스토리지 IP
+"$CI_STG2_IP=EnvGet('CI_STG2_IP')" 계산한다.
+"$CI_STG2_IP_1=stringsplit('|$CI_STG2_IP|','.')[1]" 계산한다.
+"$CI_STG2_IP_2=stringsplit('|$CI_STG2_IP|','.')[2]" 계산한다.
+"$CI_STG2_IP_3=stringsplit('|$CI_STG2_IP|','.')[3]" 계산한다.
+"$CI_STG2_IP_4=stringsplit('|$CI_STG2_IP|','.')[4]" 계산한다.
+; Anystor-E의 세번째 노드 스토리지 IP
+"$CI_STG3_IP=EnvGet('CI_STG3_IP')" 계산한다.
+"$CI_STG3_IP_1=stringsplit('|$CI_STG3_IP|','.')[1]" 계산한다.
+"$CI_STG3_IP_2=stringsplit('|$CI_STG3_IP|','.')[2]" 계산한다.
+"$CI_STG3_IP_3=stringsplit('|$CI_STG3_IP|','.')[3]" 계산한다.
+"$CI_STG3_IP_4=stringsplit('|$CI_STG3_IP|','.')[4]" 계산한다.
+; Anystor-E의 네번째 노드 스토리지 IP
+"$CI_STG4_IP=EnvGet('CI_STG4_IP')" 계산한다.
+"$CI_STG4_IP_1=stringsplit('|$CI_STG4_IP|','.')[1]" 계산한다.
+"$CI_STG4_IP_2=stringsplit('|$CI_STG4_IP|','.')[2]" 계산한다.
+"$CI_STG4_IP_3=stringsplit('|$CI_STG4_IP|','.')[3]" 계산한다.
+"$CI_STG4_IP_4=stringsplit('|$CI_STG4_IP|','.')[4]" 계산한다.
+
+; Anystor-E의 서비스 이더넷 Netmask
+"$CI_SVC_MASK=EnvGet('CI_SVC_MASK')" 계산한다
+$CI_SVC_MASK=255.0.0.0 설정한다.
+"$CI_SVC_MASK_1=stringsplit('|$CI_SVC_MASK|','.')[1]" 계산한다.
+"$CI_SVC_MASK_2=stringsplit('|$CI_SVC_MASK|','.')[2]" 계산한다.
+"$CI_SVC_MASK_3=stringsplit('|$CI_SVC_MASK|','.')[3]" 계산한다.
+"$CI_SVC_MASK_4=stringsplit('|$CI_SVC_MASK|','.')[4]" 계산한다.
+
+; Anystor-E의 처음 서비스 IP
+"$CI_SVC_START_IP=EnvGet('CI_SVC_START')" 계산한다.
+"$CI_SVC_START_IP_1=stringsplit('|$CI_SVC_START_IP|','.')[1]" 계산한다.
+"$CI_SVC_START_IP_2=stringsplit('|$CI_SVC_START_IP|','.')[2]" 계산한다.
+"$CI_SVC_START_IP_3=stringsplit('|$CI_SVC_START_IP|','.')[3]" 계산한다.
+"$CI_SVC_START_IP_4=stringsplit('|$CI_SVC_START_IP|','.')[4]" 계산한다.
+; Anystor-E의 마지막 서비스 IP
+"$CI_SVC_END=EnvGet('CI_SVC_END')" 계산한다.
+"$CI_SVC_END_IP_4=stringsplit('|$CI_SVC_END|','.')[4]" 계산한다.
+
+; Anystor-E의 첫번째 노드 관리 IP
+"$CI_TGT1_IP=EnvGet('CI_TGT1_IP')" 계산한다.
+"$CI_TGT1_IP_1=stringsplit('|$CI_TGT1_IP|','.')[1]" 계산한다.
+"$CI_TGT1_IP_2=stringsplit('|$CI_TGT1_IP|','.')[2]" 계산한다.
+"$CI_TGT1_IP_3=stringsplit('|$CI_TGT1_IP|','.')[3]" 계산한다.
+"$CI_TGT1_IP_4=stringsplit('|$CI_TGT1_IP|','.')[4]" 계산한다.
+; Anystor-E의 첫번째 노드의 VM 파일 경로
+"$CI_TGT1_VM=EnvGet('CI_TGT1_VM')" 계산한다.
+
+; Anystor-E의 두번째 노드 관리 IP
+"$CI_TGT2_IP=EnvGet('CI_TGT2_IP')" 계산한다.
+; Anystor-E의 두번째 노드의 VM 파일 경로
+"$CI_TGT2_VM=EnvGet('CI_TGT2_VM')" 계산한다.
+
+; Anystor-E의 세번째 노드 관리 IP
+"$CI_TGT3_IP=EnvGet('CI_TGT3_IP')" 계산한다.
+; Anystor-E의 세번째 노드의 VM 파일 경로
+"$CI_TGT3_VM=EnvGet('CI_TGT3_VM')" 계산한다.
+
+; Anystor-E의 네번째 노드 관리 IP
+"$CI_TGT4_IP=EnvGet('CI_TGT4_IP')" 계산한다.
+; Anystor-E의 네번째 노드의 VM 파일 경로
+"$CI_TGT4_VM=EnvGet('CI_TGT4_VM')" 계산한다.
+
+; VM이 탑재된 VM장비의 IP (192.168.0.8 등)
+"$CI_VM_HOST=EnvGet('CI_VM_HOST')" 계산한다.
+; VM장비의 로그인 비밀번호
+"$CI_VM_PASS=EnvGet('CI_VM_PASS')" 계산한다.
+; VM장비의 로그인 비밀번호
+"$CI_VM_USER=EnvGet('CI_VM_USER')" 계산한다.
+
+; Anystor-E의 OS
+"$CI_DISTRO=EnvGet('CI_DISTRO')" 계산한다.
+; Anystor-E의 관리 네트워크 인터페이스
+"$CI_NET_MGMT=EnvGet('CI_NET_MGMT')" 계산한다.
+; Anystor-E의 스토리지 네트워크의 본딩 모드
+"$CI_NET_STG_MODE=EnvGet('CI_NET_STG_MODE')" 계산한다.
+; Anystor-E의 스토리지 네트워크 본딩의 Primary 인터페이스
+"$CI_NET_STG_PRIM=EnvGet('CI_NET_STG_PRIM')" 계산한다.
+; Anystor-E의 스토리지 네트워크 본딩의 Slave 인터페이스들 
+"$CI_NET_STG_SLAV_WIN=EnvGet('CI_NET_STG_SLAV_WIN')" 계산한다.
+
+; Anystor-E의 서비스 네트워크의 본딩 모드
+"$CI_NET_SVC_MODE=EnvGet('CI_NET_SVC_MODE')" 계산한다.
+; Anystor-E의 서비스 네트워크 본딩의 Primary 인터페이스
+"$CI_NET_SVC_PRIM=EnvGet('CI_NET_SVC_PRIM')" 계산한다.
+; Anystor-E의 서비스 네트워크 본딩의 Slave 인터페이스들 
+"$CI_NET_SVC_SLAV_WIN=EnvGet('CI_NET_SVC_SLAV_WIN')" 계산한다.
+
+; Anystor-E의 pvs 정보
+"$CI_VOLUME_PVS_WIN=EnvGet('CI_VOLUME_PVS_WIN')" 계산한다.
+
+; Anystor-E의 RDMA의 Flag
+"$CI_RDMA_FLAG=EnvGet('CI_RDMA_FLAG')" 계산한다.
+"$CI_VM_HOST=EnvGet('CI_VM_HOST')" 계산한다.
+; VM장비의 로그인 비밀번호
+"$CI_VM_PASS=EnvGet('CI_VM_PASS')" 계산한다.
+; VM장비의 로그인 비밀번호
+"$CI_VM_USER=EnvGet('CI_VM_USER')" 계산한다.

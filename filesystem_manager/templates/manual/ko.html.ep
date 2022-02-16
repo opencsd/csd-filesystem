@@ -1,0 +1,281 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="ko">
+
+<head>
+    <!-- 브라우저 상단 제목 -->
+    <title>GMS 매뉴얼</title>
+
+    <meta http-equiv="Content-Type" content="application/xhtml+xml; charset=utf-8" />
+    <meta http-equiv="Expires" content="Mon, 06 Jan 1990 00:00:01 GMT">
+    <meta http-equiv="Expires" content="-1">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Cache-Control" content="no-cache">
+
+    <link rel="stylesheet" href="/manual/css/book.css" type="text/css" />
+    <link rel="stylesheet" href="/manual/css/bootstrap.css" type="text/css" />
+    <link rel="stylesheet" href="/manual/css/markdown.css" type="text/css" />
+    <link rel="stylesheet" href="/manual/css/index.css" type="text/css" />
+    <link rel="stylesheet" href="/manual/css/font-awesome.min.css"/>
+
+    <script src="/js/jquery/jquery-1.12.4.min.js"></script>
+    <script src="/js/libraries/jquery.cookie.js"></script>
+    <script src="/manual/script/prototype.js" type="text/javascript"></script>
+    <script src="/manual/script/search.js" type="text/javascript"></script>
+    <script src="/manual/script/html.js" type="text/javascript"></script>
+    <script>
+        jQuery(document).ready(function() {
+            document.getElementById("language").value = 'ko';
+        });
+
+        function setCookie(val) {
+            parent.location.pathname = "manual/en";
+        }
+    </script>
+</head>
+
+<body>
+    <div id="head">
+        <form method="get" action="file.doc">
+            <a id="manual_download" class="button" href="/manual/ko/manual.pdf" download>매뉴얼 다운로드</a>
+        </form>
+        <div class="wrapper">
+            <div class="dropdown">
+                <select id='language' class='white' onChange="setCookie(this.value)">
+                    <option value="ko">한국어</option>
+                    <option value="en">영어</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <div id="main">
+        <div id="contents">
+            <!-- 검색 창 -->
+            <div id="search_input_panel">
+                <form id="search"><input type="text" /><input type="submit" value="" id="search_input">
+                    <!-- <i class="fa fa-times" aria-hidden="true"></i> Spinner icon when loading content... -->
+                    <input id="search_close" type="reset" value="" alt="clear" class="close" />
+                </form>
+            </div>
+
+            <!-- 검색 결과 -->
+            <div id="search_panel">
+                <div id="search_result" data-i18n-no="검색 결과가 없습니다."></div>
+            </div>
+
+            <div id="menuTreeBox" class="tabs">
+                <ul class="tab-links">
+                    <li class="active"><a href="#AdminManual">관리자 매뉴얼</a></li>
+                    <li><a href="#OperationManual">운영 가이드</a></li>
+                </ul>
+                <div class="tab-content">
+                    <div id="AdminManual" class="tab active">
+                        <ul class="menuTree">
+                            <ul class="single-list">
+                                <li><a href="intro.xhtml" target="content_iframe">AnyStor-E 관리자 매뉴얼</a></li>
+                            </ul>
+
+                            <!-- 부모 트리 -->
+                            <input id="group-11" type="checkbox" hidden />
+                            <label for="group-11"><span class="fa fa-angle-right"></span><span class='pTree'> </span>설치 가이드</label>
+
+                            <!-- 자식 트리 -->
+                            <ul class="group-list">
+                                <li><a href="install.xhtml#사전 작업" target="content_iframe"><span class='sTree'>1 </span>사전 작업</a></li>
+                                <li><a href="install.xhtml#RPM 설치" target="content_iframe"><span class='sTree'>2 </span>RPM 설치</a></li>
+                                <li><a href="install.xhtml#ISO 설치" target="content_iframe"><span class='sTree'>3 </span>ISO 설치</a></li>
+                                <li><a href="install.xhtml#구성 작업" target="content_iframe"><span class='sTree'>4 </span>구성 작업</a></li>
+                            </ul>
+
+                            <!-- 부모 트리 -->
+                            <input id="group-1" type="checkbox" hidden />
+                            <label for="group-1"><span class="fa fa-angle-right"></span><span class='pTree'>1 </span>클러스터 관리</label>
+
+                            <!-- 자식 트리 -->
+                            <ul class="group-list">
+                                <li><a href="cluster.xhtml#1.1 클러스터 관리 기능 개요" target="content_iframe"><span class='sTree'>1.1 </span>클러스터 관리 기능 개요</a></li>
+                                <li><a href="cluster.xhtml#1.2 오버뷰" target="content_iframe"><span class='sTree'>1.2 </span>오버뷰</a></li>
+                                <li><a href="cluster.xhtml#1.3 클러스터 노드 관리" target="content_iframe"><span class='sTree'>1.3 </span>클러스터 노드 관리</a></li>
+                                <li><a href="cluster.xhtml#1.4 이벤트" target="content_iframe"><span class='sTree'>1.4 </span>이벤트</a></li>
+                                <li><a href="cluster.xhtml#1.5 네트워크 설정" target="content_iframe"><span class='sTree'>1.5 </span>네트워크 설정</a></li>
+                                <li><a href="cluster.xhtml#1.6 알림 설정" target="content_iframe"><span class='sTree'>1.6 </span>알림 설정</a></li>
+                                <li><a href="cluster.xhtml#1.7 시간 설정" target="content_iframe"><span class='sTree'>1.7 </span>시간 설정</a></li>
+                                <li><a href="cluster.xhtml#1.8 전원 관리" target="content_iframe"><span class='sTree'>1.8 </span>전원 관리</a></li>
+                                <li><a href="cluster.xhtml#1.9 로그 백업" target="content_iframe"><span class='sTree'>1.9 </span>로그 백업</a></li>
+                                <li><a href="cluster.xhtml#1.10 라이선스 관리" target="content_iframe"><span class='sTree'>1.10 </span>라이선스 관리</a></li>
+                            </ul>
+
+                            <input id="group-2" type="checkbox" hidden />
+                            <label for="group-2"><span class="fa fa-angle-right"></span><span class='pTree'>2 </span>클러스터 볼륨 관리</label>
+
+                            <ul class="group-list">
+                                <li><a href="clusterVolume.xhtml#2.1 볼륨 풀 관리 소개" target="content_iframe"><span class='sTree'>2.1 </span>볼륨 관리 개요</a></li>
+                                <li><a href="clusterVolume.xhtml#2.2 볼륨 풀 관리" target="content_iframe"><span class='sTree'>2.2 </span>볼륨 풀 관리</a></li>
+                                <li><a href="clusterVolume.xhtml#2.3 볼륨 관리" target="content_iframe"><span class='sTree'>2.3 </span>볼륨 관리</a></li>
+                                <li><a href="clusterVolume.xhtml#2.4 스냅샷 관리" target="content_iframe"><span class='sTree'>2.4 </span>스냅샷 관리</a></li>
+                            </ul>
+
+                            <input id="group-3" type="checkbox" hidden />
+                            <label for="group-3"><span class="fa fa-angle-right"></span><span class='pTree'>3 </span>인증 및 계정 관리</label>
+
+                            <!-- 자식 트리 -->
+                            <ul class="group-list">
+                                <li><a href="account.xhtml#3.1 인증 및 계정 소개" target="content_iframe"><span class='sTree'>3.1 </span>인증 및 계정 개요 소개</a></li>
+                                <li><a href="account.xhtml#3.2 사용자" target="content_iframe"><span class='sTree'>3.2 </span>사용자</a></li>
+                                <li><a href="account.xhtml#3.3 그룹" target="content_iframe"><span class='sTree'>3.3 </span>그룹</a></li>
+                                <li><a href="account.xhtml#3.4 외부 인증" target="content_iframe"><span class='sTree'>3.4 </span>외부 인증</a></li>
+                                <li><a href="account.xhtml#3.5 관리자" target="content_iframe"><span class='sTree'>3.5 </span>관리자</a></li>
+                            </ul>
+
+                            <input id="group-4" type="checkbox" hidden />
+                            <label for="group-4"><span class="fa fa-angle-right"></span><span class='pTree'>4 </span>서비스 프로토콜</label>
+
+                            <!-- 자식 트리 -->
+                            <ul class="group-list">
+                                <li><a href="share.xhtml#4.1 서비스 프로토콜 개요" target="content_iframe"><span class='sTree'>4.1 </span>서비스 프로토콜 개요</a></li>
+                                <li><a href="share.xhtml#4.2 프로토콜 설정" target="content_iframe"><span class='sTree'>4.2 </span>프로토콜 설정</a></li>
+                                <li><a href="share.xhtml#4.3 공유 설정" target="content_iframe"><span class='sTree'>4.3 </span>공유 설정</a></li>
+                            </ul>
+
+                            <input id="group-5" type="checkbox" hidden />
+                            <label for="group-5"><span class="fa fa-angle-right"></span><span class='pTree'>5 </span>노드 관리</label>
+
+                            <!-- 자식 트리 -->
+                            <ul class="group-list">
+                                <li><a href="node.xhtml#5.1 노드 관리 소개" target="content_iframe"><span class='sTree'>5.1 </span>노드 관리 소개</a></li>
+                                <li><a href="node.xhtml#5.2 노드별 현황" target="content_iframe"><span class='sTree'>5.2 </span>노드별 현황</a></li>
+                                <li><a href="node.xhtml#5.3 디스크 설정" target="content_iframe"><span class='sTree'>5.3 </span>디스크 설정</a></li>
+                                <li><a href="node.xhtml#5.4 볼륨 설정" target="content_iframe"><span class='sTree'>5.4 </span>볼륨 설정</a></li>
+                                <li><a href="node.xhtml#5.5 프로세스" target="content_iframe"><span class='sTree'>5.5 </span>프로세스</a></li>
+                                <li><a href="node.xhtml#5.6 RAID 정보" target="content_iframe"><span class='sTree'>5.6 </span>RAID 정보</a></li>
+                                <li><a href="node.xhtml#5.7 네트워크 본딩" target="content_iframe"><span class='sTree'>5.7 </span>네트워크 본딩</a></li>
+                                <li><a href="node.xhtml#5.8 네트워크 장치" target="content_iframe"><span class='sTree'>5.8 </span>네트워크 장치</a></li>
+                                <li><a href="node.xhtml#5.9 네트워크 주소" target="content_iframe"><span class='sTree'>5.9 </span>네트워크 주소</a></li>
+                                <li><a href="node.xhtml#5.10 전원" target="content_iframe"><span class='sTree'>5.10 </span>전원</a></li>
+                                <li><a href="node.xhtml#5.11 S.M.A.R.T." target="content_iframe"><span class='sTree'>5.11 </span>SMART</a></li>
+                            </ul>
+                        </ul>
+                    </div>
+
+                    <div id="OperationManual" class="tab">
+                        <ul class="menuTree">
+                            <ul class="single-list">
+                                <!-- 부모 트리 -->
+                                <input id="group-9" type="checkbox" hidden />
+                                <label for="group-9"><span class="fa fa-angle-right"></span>Trouble Shooting</label>
+
+                                <ul class="group-list">
+                                    <ul class="sub-single-list">
+                                        <li><a href="troubleshoot_common.xhtml#기본 점검 사항" target="content_iframe">공통 점검 사항</a></li>
+                                    </ul>
+
+                                    <input id="group-7" type="checkbox" hidden />
+                                    <label for="group-7" href="troubleshoot_status.xhtml"><span class="fa fa-angle-right"></span>대쉬보드 모니터링</label>
+
+                                    <!-- 자식 트리 -->
+                                    <ul class="sub-group-list">
+                                        <li><a href="troubleshoot_status.xhtml#클러스터 상태가 Manage: UNHEALTHY" target="content_iframe">Manage: UNHEALTHY</a></li>
+                                        <li><a href="troubleshoot_status.xhtml#클러스터 상태가 Service: DEGRADED" target="content_iframe">Service: DEGRADED</a></li>
+                                    </ul>
+
+                                    <input id="group-6" type="checkbox" hidden />
+                                    <label for="group-6"><span class="fa fa-angle-right"></span>이벤트 경고 확인</label>
+
+                                    <!-- 자식 트리 -->
+                                    <ul class="sub-group-list">
+                                        <li><a href="troubleshoot_event.xhtml" target="content_iframe">VolGroup-lv_root</a></li>
+                                    </ul>
+
+                                    <input id="group-8" type="checkbox" hidden />
+                                    <label for="group-8"><span class="fa fa-angle-right"></span>서비스 I/O 점검</label>
+
+                                      <!-- 자식 트리 -->
+                                      <ul class="sub-group-list">
+                                          <li><a href="troubleshoot_ioservice.xhtml" target="content_iframe">Input/Output error</a></li>
+                                     </ul>
+                                 </ul>
+                             </ul>
+
+                            <!-- 부모 트리 -->
+                            <input id="group-10" type="checkbox" hidden />
+                            <label for="group-10"><span class="fa fa-angle-right"></span>FAQ</label>
+
+                            <!-- 자식 트리 -->
+                            <ul class="group-list">
+                                <li><a href="questions_windows.xhtml" target="content_iframe"><span class='sTree'>Windows 클라이언트 인증 보안 정책</span></a></li>
+                            </ul>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 본문 -->
+    <div id="content">
+        <!-- 소개 -->
+        <div id="intro" class="content">
+            <div id="intro-html" style="padding-top: 30px;padding-left: 30px; padding-right: 30px"></div>
+        </div>
+
+        <!-- 설치 가이드 -->
+        <div id="install" class="content">
+            <div id="install-html" style="padding-top: 30px;padding-left: 30px; padding-right: 30px"></div>
+        </div>
+
+        <!-- 클러스터 -->
+        <div id="cluster" class="content">
+            <div id="cluster-html" style="padding-top: 30px;padding-left: 30px; padding-right: 30px"></div>
+        </div>
+
+        <!-- 클러스터 볼륨 관리 -->
+        <div id="clusterVolume" class="content">
+            <div id="clusterVolume-html" style="padding-top: 30px;padding-left: 30px; padding-right: 30px"></div>
+        </div>
+
+        <!-- 계정 -->
+        <div id="account" class="content">
+            <div id="account-html" style="padding-top: 30px;padding-left: 30px; padding-right: 30px"></div>
+        </div>
+
+        <!-- 서비스 프로토콜 -->
+        <div id="share" class="content">
+            <div id="share-html" style="padding-top: 30px;padding-left: 30px; padding-right: 30px"></div>
+        </div>
+
+        <!-- 노드 관리 -->
+        <div id="node" class="content">
+            <div id="node-html" style="padding-top: 30px;padding-left: 30px; padding-right: 30px"></div>
+        </div>
+
+        <!-- 장애 대응: 공통 사항 -->
+        <div id="troubleshoot_common" class="content">
+            <div id="troubleshoot_common-html" style="padding-top: 30px;padding-left: 30px; padding-right: 30px"></div>
+        </div>
+
+        <!-- 장애 대응: 이벤트에 대항 장애 -->
+        <div id="troubleshoot_event" class="content">
+            <div id="troubleshoot_event-html" style="padding-top: 30px;padding-left: 30px; padding-right: 30px"></div>
+        </div>
+
+        <!-- 장애 대응: 상태 및 스테이지에 따른 장애 -->
+        <div id="troubleshoot_status" class="content">
+            <div id="troubleshoot_status-html" style="padding-top: 30px;padding-left: 30px; padding-right: 30px"></div>
+        </div>
+
+        <!-- 장애 대응: I/O 장애-->
+        <div id="troubleshoot_ioservice" class="content">
+            <div id="troubleshoot_ioservice-html" style="padding-top: 30px;padding-left: 30px; padding-right: 30px"></div>
+        </div>
+
+        <!-- FAQ -->
+        <div id="questions_windows" class="content">
+            <div id="questions_windows-html" style="padding-top: 30px;padding-left: 30px; padding-right: 30px"></div>
+        </div>
+    </div>
+    </section>
+    <div class="manual-top" onclick="window.scrollTo(0,0);">TOP</div>
+</body>
+
+</html>

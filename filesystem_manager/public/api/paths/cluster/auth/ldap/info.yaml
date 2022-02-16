@@ -1,0 +1,24 @@
+post:
+  x-mojo-to: 'Cluster::Auth::LDAP#info'
+  operationId: cluster_auth_ldap_info
+  tags:
+    - auth
+    - cluster
+  responses:
+    200:
+      description: LDAP authentication enabled successfully.
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/DefaultResponse'
+              - $ref: '#/components/schemas/LDAPConfig'
+              - type: object
+                properties:
+                  entity:
+                    type: object
+                    properties:
+                      Enabled:
+                        type: boolean
+    401:
+      $ref: '#/components/responses/Unauthorized'
