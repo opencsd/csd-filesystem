@@ -1,0 +1,88 @@
+image: "centos:7"
+
+variables:
+    GIT_SUBMODULE_STRATEGY: "recursive"
+    GIRASOLE_ROOT: "/tmp/girasole"
+
+before_script:
+    - |
+        echo "
+        [anystor-e]
+        name=AnyStor Enterprise Repository for production
+        baseurl=http://abs.gluesys.com/repo/anystor/3.0/os/x86_64
+        enabled=1
+        gpgcheck=0
+
+        [anystor-e-testing]
+        name=AnyStor Enterprise Repository for development
+        baseurl=http://abs.gluesys.com/repo/testing/3.0/os/x86_64
+        enabled=1
+        gpgcheck=0
+
+        [anystor-e-debuginfo]
+        name=AnyStor Enterprise Repository for DebugInfo
+        baseurl=http://abs.gluesys.com/repo/anystor/3.0/debuginfo/x86_64
+        enabled=0
+        gpgcheck=0
+
+        [anystor-e-testing-debuginfo]
+        name=AnyStor Enterprise Repository for DebugInfo
+        baseurl=http://abs.gluesys.com/repo/testing/3.0/debuginfo/x86_64
+        enabled=0
+        gpgcheck=0" > /etc/yum.repos.d/anystor-e.repo
+    - yum clean all
+    - >
+        yum install -y
+        git etcd jq rpm-build expect cifs-utils nfs-utils
+        bonnie++ ntpdate
+        samba-client cifs-utils perl-Tree-Simple perl-Net-Interface
+        perl-enum perl-libintl perl-AnyEvent perl-AnyEvent-HTTP
+        perl-Array-Diff
+        perl-Coro perl-Coro-Multicore perl-Crypt-AES-CTR
+        perl-Crypt-DES perl-Crypt-OpenSSL-RSA perl-CryptX
+        perl-Data-Compare perl-Data-Dump perl-Data-Validator
+        perl-Data-Validate-IP perl-DateTime
+        perl-DateTime-Format-Strptime perl-Devel-Cover
+        perl-Devel-Leak-Object perl-Devel-NYTProf perl-Digest-SHA
+        perl-Dir-Flock
+        perl-Env perl-Etcd
+        perl-File-chmod-Recursive perl-File-Copy-Recursive
+        perl-File-Slurp perl-Filesys-Df perl-Filesys-Statvfs
+        perl-Hash-Merge
+        perl-IO-Compress perl-IO-Interface perl-IPC-Cmd
+        perl-Memory-Usage perl-Mock-Sub perl-Module-Load
+        perl-Module-Loaded perl-Mojo-JWT perl-Mojolicious
+        perl-Mojolicious-Plugin-OpenAPI
+        perl-Mojolicious-Plugin-SwaggerUI
+        perl-MojoX-Log-Log4perl perl-Mouse perl-MouseX-Foreign
+        perl-MouseX-NativeTraits
+        perl-Net-IP perl-Net-Netmask perl-Net-OpenSSH perl-Net-Ping
+        perl-Number-Bytes-Human
+        perl-Proc-Exists
+        perl-Socket6 perl-String-Random perl-String-Util
+        perl-Switch perl-Sys-Hostname-FQDN perl-Sys-Syslog
+        perl-Test-Class-Moose perl-Test-Harness
+        perl-Test-MockModule perl-TimeDate
+        perl-XML-Smart
+        perl-YAML
+    - git config --global pull.rebase false
+    - git submodule sync --recursive
+    - git submodule update --remote --recursive
+    - ls -al libgms
+    - git clone http://jenkins:JzGRBbyEXa7tN-1zam6N@gitlab.gluesys.com/gitlab/potatogim/girasole.git ${GIRASOLE_ROOT}
+
+unittest:
+  script:
+    - pwd
+    - env
+    - cover -delete
+    - >
+      MOCK_ETCD=1 TEST_VERBOSE=1 HARNESS_PERL_SWITCHES=-MDevel::Cover
+      prove -lvm -Ilibgms -I${GIRASOLE_ROOT}/lib t/unit.t :: --statistics
+    - cover -ignore_re '^libgms/|^t/|prove'
+  artifacts:
+    when: always
+    paths:
+      - cover_db
+      - unit.log
+    expire_in: 1 week

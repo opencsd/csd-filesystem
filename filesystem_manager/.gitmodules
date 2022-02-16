@@ -1,0 +1,3 @@
+[submodule "libgms"]
+	path = libgms
+	url = ../../ac2/libgms.git
