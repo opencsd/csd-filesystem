@@ -1,0 +1,5 @@
+{
+    "log-level": "INFO",
+    "port": 55555,
+    "disable-events-log": false
+}

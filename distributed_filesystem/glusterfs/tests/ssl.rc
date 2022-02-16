@@ -1,0 +1,20 @@
+#!/bin/bash
+
+SSL_KEY=$SSL_CERT_PATH/glusterfs.key
+SSL_CERT=$SSL_CERT_PATH/glusterfs.pem
+SSL_CA=$SSL_CERT_PATH/glusterfs.ca
+
+# Create self-signed certificates
+function create_self_signed_certs (){
+        rm -f $SSL_KEY $SSL_CERT $SSL_CA
+        openssl genrsa -out $SSL_KEY 2048
+        openssl req -new -x509 -key $SSL_KEY -subj /CN=Anyone -out $SSL_CERT
+        ln $SSL_CERT $SSL_CA
+        return $?
+}
+
+function cleanup_certs () {
+        rm -f $SSL_KEY $SSL_CERT $SSL_CA
+}
+
+push_trapfunc cleanup_certs
