@@ -1,4 +1,4 @@
-## LB2PBA Client API 
+## LB2PBA Query Agent API 
 
 ### 기능
 
@@ -10,7 +10,7 @@
 
   HTTP
   
-  POST http://{LB2PBAClient}:1113/getPBA
+  POST http://{LB2PBAQueryAgent}:1113/getPBA
   
   - Parameter
 	
@@ -18,7 +18,7 @@
 	|:---:|:---:|:---:|:---|
 	|`fpath`|True|String|`File Path`|
 	|`offsets`|True|Dictionary|`Offset Dictionary`|
-	|`LB2PBAClient`|True|Int|`Kubernetes POD IP`|
+	|`LB2PBAQueryAgent`|True|Int|`Kubernetes POD IP`|
   
 	*offsets = {Index1:[OFFSET,LENGTH],Index2:[OFFSET,LENGTH]}
   

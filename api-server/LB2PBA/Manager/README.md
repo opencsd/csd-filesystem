@@ -1,4 +1,4 @@
-## LB2PBA Server API 
+## LB2PBA Manager API 
 
 ### 기능
 
@@ -8,7 +8,7 @@
 
   HTTP
   
-  POST http://{LB2PBAServer}:1113/getPBA
+  POST http://{LB2PBAManager}:1113/getPBA
   
   - Parameter
 	
@@ -16,7 +16,7 @@
 	|:---:|:---:|:---:|:---|
 	|`fpath`|True|String|`File Path`|
 	|`volume`|True|String|`Gluster Storage Volume`|
-	|`LB2PBAServer`|True|Int|`LB2PBAServer IP(Storage #1)`|
+	|`LB2PBAManager`|True|Int|`LB2PBAManager IP(Storage #1)`|
   
   
   - Return
