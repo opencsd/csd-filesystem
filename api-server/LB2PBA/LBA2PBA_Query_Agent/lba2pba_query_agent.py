@@ -175,12 +175,12 @@ def initFM():
 		
 		if err == 0:
 			ip = {"ip":res.split()[1]}
-			data = {"ip":ip}
+			data = re.post("http://csimanager:1113/getSubdir",data=ip).json()["data"]
 
 			#Subvol, Volume = re.post("http://csiManager:5000/getPodInfo",data)
 
-			Subvol = "subvol/23/67/pvc-b7006d8c-41cb-4867-8c44-afc28233377e"
-			Volume = "k8s-pv1"
+			Subvol = data[0]
+			Volume = data[1]
 			
 			for fName in FMState.keys():
 				FM[fName] = file2PBA(fName,RootDic)
