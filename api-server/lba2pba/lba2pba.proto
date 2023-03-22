@@ -1,0 +1,120 @@
+syntax="proto3";
+
+package lba2pba;
+
+service QueryAgent{
+	rpc GetPba (QGetPbaRequest) returns (QGetPbaResponse);
+}
+
+service Manager{
+	rpc CreatePvc (CreatePvcRequest) returns (CreatePvcResponse);
+	rpc DeletePvc (DeletePvcRequest) returns (DeletePvcResponse);
+	rpc GetFM (GetFMRequest) returns (GetFMResponse);
+	rpc UpdateFM (UpdateFMRequest) returns (UpdateFMResponse);
+}
+
+service Trace{
+	rpc Get (TGetPbaRequest) returns (TGetPbaResponse);
+}
+
+service Worker{
+	rpc Get (WGetPbaRequest) returns (WGetPbaResponse);
+}
+
+message PBA{
+    string Disk = 1;
+    string Host = 2;
+    int64 Offset = 3;
+    int64 Length = 4;
+    int64 Major = 5;
+    int64 Minor = 6;
+}
+
+message FilePBA{
+	repeated PBA Pba = 1;
+	string FileName = 2;
+}
+
+
+message FileMap {
+    repeated FilePBA FilePba = 1;
+}
+
+
+message WGetPbaRequest{
+	string FileName = 1;
+}
+
+message WGetPbaResponse{
+	message Data{
+		int64 Major = 1;
+		int64 Minor = 2;
+		int64 Offset = 3;
+		int64 Length = 4;
+	}
+	
+	repeated Data Pba = 1;
+	string Disk = 2;
+	string FileName = 3;
+}
+
+message TGetPbaRequest{
+	string FileName = 1;
+	string VolName = 2;
+}
+
+message TGetPbaResponse{
+	repeated PBA Pba = 1;
+}
+
+message CreatePvcRequest{
+	string PvcName = 1;
+	string PvcType = 2;
+	string DupliType = 3;
+}
+
+message CreatePvcResponse{
+	string Msg = 1;
+	string PvcName = 2;
+}
+
+message DeletePvcRequest{
+	string PvcName = 1;
+}
+
+message DeletePvcResponse{
+	string Msg = 1;
+	string PvcName =2;
+}
+
+message GetFMRequest{
+	string Ip = 1;
+	repeated string FileList = 2;
+}
+
+message GetFMResponse{
+	FileMap FileMap = 1;
+}
+
+message UpdateFMRequest{
+	string Ip = 1;
+	repeated string FileList = 2;		
+}
+
+message UpdateFMResponse{
+	FileMap FileMap = 1;
+}
+
+message QGetPbaRequest{
+	message Request{
+		string FileName = 1;
+		int64 Offset = 2;
+		int64 Length = 3;
+	}
+	
+	repeated Request Requests = 1;
+}
+
+message QGetPbaResponse{
+	repeated FilePBA FilePba = 1;
+}
