@@ -29,6 +29,8 @@ class Manager(lba2pba_pb2_grpc.ManagerServicer):
 
 		pvcName = manager_kube.GetPVC(ip)
 
+		print(f'IP : {ip}\nFiles : {fileList}\nPVC : {pvcName}')
+
 		if pvcName in pvList.keys():
 			return lba2pba_pb2.GetFMResponse(FileMap=pvList[pvcName]["FileMap"])
 		else:
@@ -42,13 +44,18 @@ class Manager(lba2pba_pb2_grpc.ManagerServicer):
 		
 		for f in fileList:
 			fileName = "%s/%s"%(subDir,f)
-			print(fileName)
-			with grpc.insecure_channel("192.168.10.60:23830") as channel:
+			print(f'fileName : {fileName}\nvolName:{volName}')
+			with grpc.insecure_channel("trace:23830") as channel:
 				stub = lba2pba_pb2_grpc.TraceStub(channel)
 				res = stub.Get(lba2pba_pb2.TGetPbaRequest(FileName=fileName,VolName=volName))
 
 				FilePba = lba2pba_pb2.FilePBA()
-				FilePba.Pba.extend(res.Pba)
+				if res.Pba:
+					FilePba.Pba.extend(res.Pba)
+					FilePba.Type = 'distribute'
+				elif res.RPba:
+					FilePba.rPba.extend(res.RPba)
+					FilePba.Type = 'replica'
 					
 				FilePba.FileName = f
 
@@ -66,18 +73,25 @@ class Manager(lba2pba_pb2_grpc.ManagerServicer):
 
 		pvcName = manager_kube.GetPVC(ip)
 
+		volName = pvList[pvcName]["volName"]
+
 		for f in fileList:
 			fileName = "%s/%s"%(pvList[pvcName]["subDir"],f)
-			volName = pvList[pvcName]["volName"]
-			with grpc.insecure_channel("192.168.10.60:23830") as channel:
+			with grpc.insecure_channel("trace:23830") as channel:
 				stub = lba2pba_pb2_grpc.TraceStub(channel)
 				res = stub.Get(lba2pba_pb2.TGetPbaRequest(FileName=fileName,VolName=volName))
 
 				for i in range(len(pvList[pvcName]["FileMap"].FilePba)):
+					t = pvList[pvcName]["FileMap"].FilePba[0].Type
+
 					if pvList[pvcName]["FileMap"].FilePba[i].FileName == f:
-						print(pvList[pvcName]["FileMap"].FilePba[i])
-						pvList[pvcName]["FileMap"].FilePba[i].ClearField("Pba")
-						pvList[pvcName]["FileMap"].FilePba[i].Pba.extend(res.Pba)
+						
+						if t == 'distribute':
+							pvList[pvcName]["FileMap"].FilePba[i].ClearField("Pba")
+							pvList[pvcName]["FileMap"].FilePba[i].Pba = res
+						elif t == 'replica':
+							pvList[pvcName]["FileMap"].FilePba[i].clearField("rPba")
+							pvList[pvcName]["FIleMap"].FilePba[i].rPba = res
 
 						print(pvList[pvcName]["FileMap"])
 			

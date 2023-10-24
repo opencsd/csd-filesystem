@@ -19,6 +19,7 @@ service Trace{
 
 service Worker{
 	rpc Get (WGetPbaRequest) returns (WGetPbaResponse);
+	rpc GetShardList (WGetShardRequest) returns (WGetShardResponse);
 }
 
 message PBA{
@@ -30,9 +31,16 @@ message PBA{
     int64 Minor = 6;
 }
 
+message ReplicaPba{
+	repeated PBA Pba = 1;
+	string Node = 2;
+}
+
 message FilePBA{
 	repeated PBA Pba = 1;
-	string FileName = 2;
+	repeated ReplicaPba rPba = 2;
+	string FileName = 3;
+	string Type = 4;
 }
 
 
@@ -40,6 +48,23 @@ message FileMap {
     repeated FilePBA FilePba = 1;
 }
 
+message VShard{
+	message FShard{
+		string FileName = 1;
+		repeated string shardList = 2;
+	}
+	string VolName = 1;
+	string Type = 2;
+	repeated FShard ShardList = 3;
+}
+
+message WGetShardRequest{
+	string VolName = 1;
+}
+
+message WGetShardResponse{
+	repeated VShard vShardList = 1;
+}
 
 message WGetPbaRequest{
 	string FileName = 1;
@@ -65,6 +90,7 @@ message TGetPbaRequest{
 
 message TGetPbaResponse{
 	repeated PBA Pba = 1;
+	repeated ReplicaPba RPba = 2;
 }
 
 message CreatePvcRequest{

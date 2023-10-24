@@ -1,0 +1,86 @@
+#!/bin/perl
+
+my $output = `gluster volume info | grep -i 'volume Name'`;
+
+my @lines = split(/\n/,$output);
+
+my @volumes;
+
+foreach my $line (@lines){
+	my @vs = split(/:/,$line);
+	my $volume = substr($vs[1],1);
+
+	push(@volumes,$volume);
+}
+
+foreach my $volume (@volumes){
+	my @bricks;
+
+	my $host = `hostname`;
+
+	my @type = split(/: /,`gluster volume info $volume | grep Type`);
+	
+	my $type = substr($type[1],0,length($type[1])-1);
+
+	my $data = `gluster volume info $volume | grep $host`;
+
+	my @lines = split(/\n/,$data);
+
+	my $res = '';
+
+	if ( $type =~ "Distribute"){
+		$res = "$volume Shard";
+	}
+	
+	foreach my $line (@lines){
+		my @brick = split(/:/,$line);
+
+		my $files = `ls -al \`find $brick[-1]/subvol\``;
+		
+		my @flines = split(/\n\n/,$files);
+		foreach my $fline (@flines){
+			my @fdata = split(/\n/,$fline);
+			my $path = $fdata[0];
+			$path = substr($path,0,$#path);
+			foreach my $i (2..$#fdata){
+				my @f = split(/\s+/,$fdata[$i]);
+				my $fpath = "$path/$f[-1]";
+				if( -f $fpath){
+					my $t = `getfattr -d -m. -e hex --absolute-names $fpath | grep gfid=0x`;
+					my @gfid = split(/gfid=0x/,$t);
+					my $gfid = $gfid[-1];
+					$gfid  = substr($gfid,0,8).'-'.substr($gfid,8,4).'-'.substr($gfid,12,4).'-'.substr($gfid,16,4).'-'.substr($gfid,20,$#gfid-2);
+
+
+					if ( $type =~ "Distributed-Replicate" ){
+						$res = "$volume $fpath";
+						foreach my $l (@lines){
+							my @br = split(/:/,$l);
+
+							my $sList = `ls $br[-1]/.shard/ | grep $gfid`;
+							
+							foreach $sf (split(/\n/,$sList)){
+								$res = $res . " $br[-1]/.shard/$sf";
+							}
+						}
+						print "$res\n";
+					}else{
+						foreach my $l (@lines){
+							my @br = split(/:/,$l);
+
+							my $sList = `ls $br[-1]/.shard/ | grep $gfid`;
+							
+							foreach $sf (split(/\n/,$sList)){
+								$res = $res . " $br[-1]/.shard/$sf";
+							}
+						}
+
+						print "$volume $fpath $gfid\n$res\n";
+						
+					}
+				}
+			}
+		}
+	}
+
+}

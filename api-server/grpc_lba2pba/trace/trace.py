@@ -9,41 +9,106 @@ import lba2pba_pb2_grpc
 
 import shard
 
-class Trace(lba2pba_pb2_grpc.TraceServicer):
-	def Get(self,request,context):
-		path = request.FileName
-		volume = request.VolName
+def getGlusterHost():
+	cmd = 'gluster peer status | grep Hostname'
+	err, res = subprocess.getstatusoutput(cmd)
 
-		shardList = shard.getShardList(path,volume)
+	hosts = ['localhost']
+	if res:
+		for line in res.split('\n'):
+			hosts.append(line.split(": ")[1])
 
-		pba_list = list()
+		return hosts
+
+def getFM(volume,fName):
+	shardList = shard.getShardList()
+	
+#	re = {}
+
+	for t in shardList.keys():
+		if not volume in shardList[t].keys():
+			continue
 		
+		for f in shardList[t][volume].keys():
+			if fName in f:
+				fName = f
+	
+		#if not volume in re.keys():
+		#	re[volume] = {}
 
-		for shardlist in shardList:
-			path = shardlist['path']
-			host = shardlist['host']
+		#if not fList:
+		#	flist = shardList[t][volume].keys()
 
-			with grpc.insecure_channel("%s:23829"%host) as channel:
-				stub = lba2pba_pb2_grpc.WorkerStub(channel)
-				res = stub.Get(lba2pba_pb2.WGetPbaRequest(FileName=path))
-				
+		if t == 'replica':
+		#	for fName in flist:
+			FM = {'FileName':fName,'Type':t,'rPba':[]}
+			for host in shardList[t][volume][fName].keys():
+				rPba = {}
+				pba = []
+				for f in shardList[t][volume][fName][host]:
+					with grpc.insecure_channel(f'{host}:23829') as channel:
+						stub = lba2pba_pb2_grpc.WorkerStub(channel)
+						res = stub.Get(lba2pba_pb2.WGetPbaRequest(FileName=f))
 
-				disk = res.Disk
-				
-				for pba in res.Pba:
-					data = dict()
-					data["Disk"] = disk
-					data["Host"] = host
-					data["Major"] = pba.Major
-					data["Minor"] = pba.Minor
-					data["Offset"] = pba.Offset
-					data["Length"] = pba.Length
+						for p in res.Pba:
+							tdict = {
+								'Disk': res.Disk,
+								'Host': host,
+								'Offset': p.Offset,
+								'Length': p.Length,
+							}
 
-					pba_list.append(data)
+							pba.append(tdict)
 
-		print(pba_list)
+				rPba['Pba'] = pba
+				rPba['Node'] = host
 
-		return lba2pba_pb2.TGetPbaResponse(Pba=pba_list)
+				FM['rPba'].append(rPba)
+
+			#re[volume][fName]=FM
+			return FM
+
+		elif t == 'distribute':
+			#for fName in flist:
+			FM = {'FileName':fName, 'Type':t, 'Pba':[]}
+
+			for fInfo in shardList[t][volume][fName]:
+				host, f = fInfo.split(' ')
+
+				with grpc.insecure_channel(f'{host}:23829') as channel:
+					stub = lba2pba_pb2_grpc.WorkerStub(channel)
+					res = stub.Get(lba2pba_pb2.WGetPbaRequest(FileName=f))
+
+					pba = []
+					for p in res.Pba:
+						tdict = {
+							'Disk': res.Disk,
+							'Host': host,
+							'Offset': p.Offset,
+							'Length': p.Length,
+							'Major': p.Major,
+							'Minor': p.Minor
+						}
+
+						FM['Pba'].append(tdict)
+
+			return FM
+
+	return 
+
+class Trace(lba2pba_pb2_grpc.TraceServicer): 	
+	def Get(self,request,context):
+
+		fName = request.FileName
+		volume = request.VolName
+		
+		data = getFM(volume,fName)
+
+		if data['Type'] == 'distribute':
+			return lba2pba_pb2.TGetPbaResponse(Pba=data['Pba'])
+		elif data['Type'] == 'replica':
+			return lba2pba_pb2.TGetPbaResponse(RPba=data['rPba'])
+
 
 
 def serve():

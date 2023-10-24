@@ -301,12 +301,23 @@ class WorkerStub(object):
                 request_serializer=lba2pba__pb2.WGetPbaRequest.SerializeToString,
                 response_deserializer=lba2pba__pb2.WGetPbaResponse.FromString,
                 )
+        self.GetShardList = channel.unary_unary(
+                '/lba2pba.Worker/GetShardList',
+                request_serializer=lba2pba__pb2.WGetShardRequest.SerializeToString,
+                response_deserializer=lba2pba__pb2.WGetShardResponse.FromString,
+                )
 
 
 class WorkerServicer(object):
     """Missing associated documentation comment in .proto file."""
 
     def Get(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def GetShardList(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -319,6 +330,11 @@ def add_WorkerServicer_to_server(servicer, server):
                     servicer.Get,
                     request_deserializer=lba2pba__pb2.WGetPbaRequest.FromString,
                     response_serializer=lba2pba__pb2.WGetPbaResponse.SerializeToString,
+            ),
+            'GetShardList': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetShardList,
+                    request_deserializer=lba2pba__pb2.WGetShardRequest.FromString,
+                    response_serializer=lba2pba__pb2.WGetShardResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -344,5 +360,22 @@ class Worker(object):
         return grpc.experimental.unary_unary(request, target, '/lba2pba.Worker/Get',
             lba2pba__pb2.WGetPbaRequest.SerializeToString,
             lba2pba__pb2.WGetPbaResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def GetShardList(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/lba2pba.Worker/GetShardList',
+            lba2pba__pb2.WGetShardRequest.SerializeToString,
+            lba2pba__pb2.WGetShardResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)

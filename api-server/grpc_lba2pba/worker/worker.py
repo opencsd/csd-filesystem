@@ -13,6 +13,9 @@ import array
 import fcntl
 import json
 import subprocess
+import time
+
+import multiprocessing 
 
 _PBASCAN_FORMAT = "=QQLLLL"
 _PBASCAN_SIZE = struct.calcsize(_PBASCAN_FORMAT)
@@ -20,7 +23,9 @@ _PBASCAN_EXTENT_FORMAT = "=QQQQQLLLL"
 _PBASCAN_EXTENT_SIZE = struct.calcsize(_PBASCAN_EXTENT_FORMAT)
 _PBASCAN_IOCTL = 0xC020660B
 _PBASCAN_FLAG_SYNC = 0x00000001
-_PBASCAN_BUFFER_SIZE = 256 * 1024
+_PBASCAN_BUFFER_SIZE = 256 * 1024	
+	
+		
 
 class Worker(lba2pba_pb2_grpc.WorkerServicer):
 	def Get(self, request, context):
@@ -83,7 +88,36 @@ class Worker(lba2pba_pb2_grpc.WorkerServicer):
 		
 		data_dict = dict()
 
-		return lba2pba_pb2.WGetPbaResponse(Pba=chunk_list,Disk=disk,FileName=query_data)
+		return lba2pba_pb2.WGetPbaResponse(Pba=chunk_list,Disk=disk,FileName=query_data)	
+	def GetShardList(self, request, content):
+		cmd = "./getGPba"
+		err, res = subprocess.getstatusoutput(cmd)
+
+		if res:
+			flist = {}
+			vlist = []
+			for line in res.split("\n"):
+				if not line:
+					continue
+				data = line.split()
+				vol = data[0]
+				fName = data[1]
+				shardList = data[2:]
+				
+				print(shardList)
+
+
+				if not vol in flist.keys():
+					flist[vol] = []
+
+				flist[vol].append({'FileName':fName,'shardList':shardList})
+				
+			for v in flist.keys():
+				vlist.append({'VolName':v,'ShardList':flist[v]})
+
+
+		return lba2pba_pb2.WGetShardResponse(vShardList=vlist)
+		
 
 def serve():
 	server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))

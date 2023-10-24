@@ -3,10 +3,10 @@ import subprocess
 
 
 def fTree(dic):
-	fTree = {}
+	ftree = {}
 	for curDir, dirs, files in os.walk(dic):
 		for d in dirs:
-			fileState(d)
+			fTree(d)
 		for f in files:
 			if not ".swp" in f:
 				p = os.path.join(curDir,f)
@@ -14,9 +14,9 @@ def fTree(dic):
 
 				p = p.split(dic)[1][1:]
 
-				fTree[p] = mtime
+				ftree[p] = mtime
 
-	return fTree
+	return ftree
 
 def diffTree(tree, rootDic):
 	curTree = fTree(rootDic)
